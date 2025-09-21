@@ -50,14 +50,16 @@
 
 ### What's Left to Build 🚧
 
-#### Phase 3: Pipeline Integration (Current Priority)
-1. **End-to-End Pipeline Workflow**
-   - [ ] Connect DocumentPollingService with PdfOcrService
-   - [ ] Implement complete poll → download → OCR → update cycle
+#### Phase 3: Pipeline Integration (ALMOST COMPLETE)
+1. **✅ End-to-End Pipeline Workflow - COMPLETE**
+   - ✅ Connected DocumentPollingService with PdfOcrService
+   - ✅ Implemented complete poll → OCR → metadata extraction cycle
+   - ✅ Pipeline execution orchestration with Spring Integration channels
    - [ ] Document state management and idempotency tracking
-   - [ ] Pipeline execution orchestration
 
 2. **Document Processing Enhancement**
+   - ✅ Parallel AI metadata extraction (title, tags, correspondent, custom fields)
+   - ✅ Extended PaperlessApiClient with correspondent and custom field APIs
    - [ ] Document download functionality in PaperlessApiClient
    - [ ] Document metadata update operations
    - [ ] Processed document tagging and state tracking

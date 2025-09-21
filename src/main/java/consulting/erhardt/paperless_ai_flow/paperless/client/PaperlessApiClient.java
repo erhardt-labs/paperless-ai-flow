@@ -2,6 +2,8 @@ package consulting.erhardt.paperless_ai_flow.paperless.client;
 
 import consulting.erhardt.paperless_ai_flow.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessApiResponse;
+import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessCorrespondent;
+import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessCustomField;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessDocument;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessTag;
 import lombok.RequiredArgsConstructor;
@@ -97,5 +99,35 @@ public class PaperlessApiClient {
         
         return getTagIdsByNames(tagNames)
                 .flatMapMany(this::getDocumentsByTagIds);
+    }
+    
+    /**
+     * Get all correspondents from Paperless
+     */
+    public Flux<PaperlessCorrespondent> getCorrespondents() {
+        log.debug("Fetching all correspondents from Paperless API");
+        
+        return webClient.get()
+                .uri("/api/correspondents/")
+                .header("Authorization", "Token " + config.getApi().getToken())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<PaperlessApiResponse<PaperlessCorrespondent>>() {})
+                .doOnNext(response -> log.debug("Fetched {} correspondents", response.getCount()))
+                .flatMapMany(response -> Flux.fromIterable(response.getResults()));
+    }
+    
+    /**
+     * Get all custom fields from Paperless
+     */
+    public Flux<PaperlessCustomField> getCustomFields() {
+        log.debug("Fetching all custom fields from Paperless API");
+        
+        return webClient.get()
+                .uri("/api/custom_fields/")
+                .header("Authorization", "Token " + config.getApi().getToken())
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<PaperlessApiResponse<PaperlessCustomField>>() {})
+                .doOnNext(response -> log.debug("Fetched {} custom fields", response.getCount()))
+                .flatMapMany(response -> Flux.fromIterable(response.getResults()));
     }
 }
