@@ -3,6 +3,7 @@ package consulting.erhardt.paperless_ai_flow.paperless.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Builder;
+import lombok.ToString;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
@@ -15,12 +16,18 @@ import java.util.List;
 @Value
 @Builder
 @Jacksonized
+@ToString(onlyExplicitlyIncluded = true)
 public class PaperlessDocument {
-    
+
+    @ToString.Include
+    @JsonProperty("id")
     Long id;
-    
+
+    @ToString.Include
+    @JsonProperty("title")
     String title;
-    
+
+    @JsonProperty("content")
     String content;
     
     @JsonProperty("tags")

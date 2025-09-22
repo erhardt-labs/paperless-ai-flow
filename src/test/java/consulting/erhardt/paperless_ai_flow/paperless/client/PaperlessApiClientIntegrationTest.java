@@ -207,4 +207,52 @@ class PaperlessApiClientIntegrationTest {
                 .expectError()
                 .verify();
     }
+    
+    @Test
+    void downloadPdf_shouldReturnPdfBytes() {
+        // Given
+        var testPdfBytes = "Test PDF content".getBytes();
+        
+        wireMock.stubFor(get(urlEqualTo("/api/documents/123/download/"))
+                .withHeader("Authorization", equalTo("Token test-token"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/pdf")
+                        .withBody(testPdfBytes)));
+        
+        // When & Then
+        StepVerifier.create(paperlessApiClient.downloadPdf(123L))
+                .expectNextMatches(bytes -> java.util.Arrays.equals(bytes, testPdfBytes))
+                .verifyComplete();
+    }
+    
+    @Test
+    void downloadPdf_shouldHandleApiError() {
+        // Given
+        wireMock.stubFor(get(urlEqualTo("/api/documents/123/download/"))
+                .withHeader("Authorization", equalTo("Token test-token"))
+                .willReturn(aResponse()
+                        .withStatus(404)
+                        .withBody("Document not found")));
+        
+        // When & Then
+        StepVerifier.create(paperlessApiClient.downloadPdf(123L))
+                .expectError()
+                .verify();
+    }
+    
+    @Test
+    void downloadPdf_shouldHandleUnauthorized() {
+        // Given
+        wireMock.stubFor(get(urlEqualTo("/api/documents/123/download/"))
+                .withHeader("Authorization", equalTo("Token test-token"))
+                .willReturn(aResponse()
+                        .withStatus(401)
+                        .withBody("Unauthorized")));
+        
+        // When & Then
+        StepVerifier.create(paperlessApiClient.downloadPdf(123L))
+                .expectError()
+                .verify();
+    }
 }

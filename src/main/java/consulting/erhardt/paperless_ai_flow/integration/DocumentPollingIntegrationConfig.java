@@ -82,8 +82,7 @@ public class DocumentPollingIntegrationConfig {
             try {
                 var documents = pollingService.pollDocuments(pipeline);
                 if (!documents.isEmpty()) {
-                    log.info("Found {} documents for pipeline '{}', sending to pollingChannel", 
-                            documents.size(), pipeline.getName());
+                    log.info("Found {} documents for pipeline '{}', sending to pollingChannel", documents.size(), pipeline.getName());
                     
                     // Send each document to the pollingChannel with pipeline context
                     for (var document : documents) {
@@ -94,7 +93,8 @@ public class DocumentPollingIntegrationConfig {
                                 .build();
                         
                         pollingChannel().send(message);
-                        log.debug("Sent document {} (title: '{}') to pollingChannel for pipeline '{}'", 
+
+                        log.debug("Sent document {} (title: '{}') to pollingChannel for pipeline '{}'",
                                 document.getId(), document.getTitle(), pipeline.getName());
                     }
                 }
@@ -135,13 +135,8 @@ public class DocumentPollingIntegrationConfig {
             log.error("Error processing OCR for document {} from pipeline '{}': {}", 
                     document.getId(), pipelineName, e.getMessage(), e);
             
-            // Return error message
-            return MessageBuilder
-                    .withPayload("OCR_ERROR: " + e.getMessage())
-                    .copyHeaders(message.getHeaders())
-                    .setHeader("ocrError", true)
-                    .setHeader("originalDocument", document)
-                    .build();
+            // Stop execution
+            return null;
         }
     }
     
@@ -153,52 +148,35 @@ public class DocumentPollingIntegrationConfig {
         var ocrResult = message.getPayload();
         var pipelineName = (String) message.getHeaders().get("pipelineName");
         var originalDocument = (PaperlessDocument) message.getHeaders().get("originalDocument");
-        var hasError = message.getHeaders().containsKey("ocrError");
-        
-        if (hasError) {
-            log.error("OCR processing failed for document {} from pipeline '{}': {}", 
-                    originalDocument.getId(), pipelineName, ocrResult);
-            
-            // Return error message for metadata
-            return MessageBuilder
-                    .<DocumentMetadataDto>withPayload(null)
-                    .copyHeaders(message.getHeaders())
-                    .setHeader("metadataError", true)
-                    .build();
-        }
-        
-        log.info("Starting metadata extraction for document {} from pipeline '{}'", 
+
+        log.info("Starting metadata extraction for document {} from pipeline '{}'",
                 originalDocument.getId(), pipelineName);
-        
+
         try {
             // Process the OCR result through metadata extraction
             var metadataResult = metadataExtractionService.extractMetadata(ocrResult).block();
-            
-            log.info("Metadata extraction completed for document {} from pipeline '{}' - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}", 
-                    originalDocument.getId(), pipelineName, metadataResult.getTitle(), 
-                    metadataResult.getTagIds().size(), metadataResult.getCorrespondentId(), 
+
+            log.info("Metadata extraction completed for document {} from pipeline '{}' - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
+                    originalDocument.getId(), pipelineName, metadataResult.getTitle(),
+                    metadataResult.getTagIds().size(), metadataResult.getCorrespondentId(),
                     metadataResult.getCustomFields().size());
-            
+
             // Create result message with metadata
             return MessageBuilder
                     .withPayload(metadataResult)
                     .copyHeaders(message.getHeaders())
                     .setHeader("metadataCompleted", true)
                     .build();
-            
+
         } catch (Exception e) {
-            log.error("Error processing metadata extraction for document {} from pipeline '{}': {}", 
+            log.error("Error processing metadata extraction for document {} from pipeline '{}': {}",
                     originalDocument.getId(), pipelineName, e.getMessage(), e);
-            
-            // Return error message
-            return MessageBuilder
-                    .<DocumentMetadataDto>withPayload(null)
-                    .copyHeaders(message.getHeaders())
-                    .setHeader("metadataError", true)
-                    .build();
+
+            // stop execution
+            return null;
         }
     }
-    
+
     /**
      * Final result handler - processes metadata extraction results
      */
@@ -207,20 +185,14 @@ public class DocumentPollingIntegrationConfig {
         var metadataResult = message.getPayload();
         var pipelineName = (String) message.getHeaders().get("pipelineName");
         var originalDocument = (PaperlessDocument) message.getHeaders().get("originalDocument");
-        var hasError = message.getHeaders().containsKey("metadataError");
-        
-        if (hasError) {
-            log.error("Metadata extraction failed for document {} from pipeline '{}'", 
-                    originalDocument.getId(), pipelineName);
-        } else {
-            log.info("Pipeline processing completed for document {} from pipeline '{}' - Extracted metadata:", 
-                    originalDocument.getId(), pipelineName);
-            log.info("  Title: '{}'", metadataResult.getTitle());
-            log.info("  Tag IDs: {}", metadataResult.getTagIds());
-            log.info("  Correspondent ID: {}", metadataResult.getCorrespondentId());
-            log.info("  Custom fields: {}", metadataResult.getCustomFields());
-        }
-        
+
+        log.info("Pipeline processing completed for document {} from pipeline '{}' - Extracted metadata:",
+                originalDocument.getId(), pipelineName);
+        log.info("  Title: '{}'", metadataResult.getTitle());
+        log.info("  Tag IDs: {}", metadataResult.getTagIds());
+        log.info("  Correspondent ID: {}", metadataResult.getCorrespondentId());
+        log.info("  Custom fields: {}", metadataResult.getCustomFields());
+
         // TODO: Here you could send the result to Paperless for document update
         // For now, we just log the successful completion of the full pipeline
     }

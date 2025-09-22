@@ -2,6 +2,7 @@ package consulting.erhardt.paperless_ai_flow.service;
 
 import consulting.erhardt.paperless_ai_flow.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.ocr.OcrClient;
+import consulting.erhardt.paperless_ai_flow.paperless.client.PaperlessApiClient;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -28,16 +28,7 @@ import static org.mockito.Mockito.*;
 class PdfToImageConversionTest {
     
     @Mock
-    private WebClient webClient;
-    
-    @Mock
-    private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
-    
-    @Mock
-    private WebClient.RequestHeadersSpec requestHeadersSpec;
-    
-    @Mock
-    private WebClient.ResponseSpec responseSpec;
+    private PaperlessApiClient paperlessApiClient;
     
     @Mock
     private OcrClient ocrClient;
@@ -48,7 +39,7 @@ class PdfToImageConversionTest {
     
     @BeforeEach
     void setUp() {
-        pdfOcrService = new PdfOcrService(webClient, ocrClient);
+        pdfOcrService = new PdfOcrService(paperlessApiClient, ocrClient);
         
         testDocument = PaperlessDocument.builder()
                 .id(589L)
@@ -78,14 +69,11 @@ class PdfToImageConversionTest {
         // Verify the PDF is actually loaded and has substantial content
         assertThat(testPdfBytes).hasSizeGreaterThan(1_000_000); // Should be > 1MB
         
-        // Mock WebClient download to return the real PDF bytes
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class)).thenReturn(Mono.just(testPdfBytes));
+        // Mock PaperlessApiClient download to return the real PDF bytes
+        when(paperlessApiClient.downloadPdf(589L)).thenReturn(Mono.just(testPdfBytes));
         
         // Mock OCR client to capture image details for verification
-        when(ocrClient.extractTextAsMarkdown(any(BufferedImage.class), anyString(), anyString()))
+        when(ocrClient.extractText(any(BufferedImage.class), anyString(), anyString()))
                 .thenAnswer(invocation -> {
                     BufferedImage image = invocation.getArgument(0);
                     return Mono.just(String.format("OCR result for image %dx%d", image.getWidth(), image.getHeight()));
@@ -115,15 +103,18 @@ class PdfToImageConversionTest {
                 })
                 .verifyComplete();
         
+        // Verify download was called correctly
+        verify(paperlessApiClient).downloadPdf(589L);
+        
         // Verify OCR was called exactly 5 times (once per page)
-        verify(ocrClient, times(5)).extractTextAsMarkdown(
+        verify(ocrClient, times(5)).extractText(
                 any(BufferedImage.class), 
                 eq("openai/gpt-4o"), 
                 eq("Test OCR prompt")
         );
         
         // Verify each image has reasonable dimensions (PDFs rendered at 300 DPI should be substantial)
-        verify(ocrClient, times(5)).extractTextAsMarkdown(
+        verify(ocrClient, times(5)).extractText(
                 argThat(image -> image.getWidth() > 1000 && image.getHeight() > 1000), 
                 anyString(), 
                 anyString()
@@ -136,14 +127,11 @@ class PdfToImageConversionTest {
         var testPdfResource = new ClassPathResource("pdfs/five-pager.pdf");
         var testPdfBytes = testPdfResource.getInputStream().readAllBytes();
         
-        // Mock WebClient
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class)).thenReturn(Mono.just(testPdfBytes));
+        // Mock PaperlessApiClient
+        when(paperlessApiClient.downloadPdf(589L)).thenReturn(Mono.just(testPdfBytes));
         
         // Mock OCR to return page-specific content
-        when(ocrClient.extractTextAsMarkdown(any(BufferedImage.class), anyString(), anyString()))
+        when(ocrClient.extractText(any(BufferedImage.class), anyString(), anyString()))
                 .thenReturn(Mono.just("Page content from PDF conversion"));
         
         // When: Process document

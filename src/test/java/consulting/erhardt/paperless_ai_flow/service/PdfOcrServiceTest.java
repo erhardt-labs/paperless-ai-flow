@@ -2,6 +2,7 @@ package consulting.erhardt.paperless_ai_flow.service;
 
 import consulting.erhardt.paperless_ai_flow.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.ocr.OcrClient;
+import consulting.erhardt.paperless_ai_flow.paperless.client.PaperlessApiClient;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessDocument;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -26,16 +26,7 @@ import static org.mockito.Mockito.*;
 class PdfOcrServiceTest {
     
     @Mock
-    private WebClient webClient;
-    
-    @Mock
-    private WebClient.RequestHeadersUriSpec requestHeadersUriSpec;
-    
-    @Mock
-    private WebClient.RequestHeadersSpec requestHeadersSpec;
-    
-    @Mock
-    private WebClient.ResponseSpec responseSpec;
+    private PaperlessApiClient paperlessApiClient;
     
     @Mock
     private OcrClient ocrClient;
@@ -47,7 +38,7 @@ class PdfOcrServiceTest {
     
     @BeforeEach
     void setUp() {
-        pdfOcrService = new PdfOcrService(webClient, ocrClient);
+        pdfOcrService = new PdfOcrService(paperlessApiClient, ocrClient);
         
         // Create test document
         testDocument = PaperlessDocument.builder()
@@ -76,14 +67,11 @@ class PdfOcrServiceTest {
         var testPdfResource = new ClassPathResource("pdfs/five-pager.pdf");
         var testPdfBytes = testPdfResource.getInputStream().readAllBytes();
         
-        // Mock WebClient download
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class)).thenReturn(Mono.just(testPdfBytes));
+        // Mock PaperlessApiClient download
+        when(paperlessApiClient.downloadPdf(589L)).thenReturn(Mono.just(testPdfBytes));
         
         // Mock OCR client responses for each page
-        when(ocrClient.extractTextAsMarkdown(any(BufferedImage.class), anyString(), anyString()))
+        when(ocrClient.extractText(any(BufferedImage.class), anyString(), anyString()))
                 .thenReturn(Mono.just("Page content extracted via OCR"));
         
         // When: Process document
@@ -98,11 +86,11 @@ class PdfOcrServiceTest {
                 })
                 .verifyComplete();
         
-        // Verify download URL was called correctly
-        verify(requestHeadersUriSpec).uri("/api/documents/589/download/");
+        // Verify download was called correctly
+        verify(paperlessApiClient).downloadPdf(589L);
         
         // Verify OCR was called for each page (5 pages in test PDF)
-        verify(ocrClient, times(5)).extractTextAsMarkdown(
+        verify(ocrClient, times(5)).extractText(
                 any(BufferedImage.class), 
                 eq("openai/gpt-4o"), 
                 eq("Test OCR prompt")
@@ -112,10 +100,7 @@ class PdfOcrServiceTest {
     @Test
     void shouldHandleDownloadError() {
         // Given: Mock download failure
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class))
+        when(paperlessApiClient.downloadPdf(589L))
                 .thenReturn(Mono.error(new RuntimeException("Download failed")));
         
         // When: Process document
@@ -135,14 +120,11 @@ class PdfOcrServiceTest {
         var testPdfResource = new ClassPathResource("pdfs/five-pager.pdf");
         var testPdfBytes = testPdfResource.getInputStream().readAllBytes();
         
-        // Mock WebClient download
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class)).thenReturn(Mono.just(testPdfBytes));
+        // Mock PaperlessApiClient download
+        when(paperlessApiClient.downloadPdf(589L)).thenReturn(Mono.just(testPdfBytes));
         
         // Mock OCR client error
-        when(ocrClient.extractTextAsMarkdown(any(BufferedImage.class), anyString(), anyString()))
+        when(ocrClient.extractText(any(BufferedImage.class), anyString(), anyString()))
                 .thenReturn(Mono.error(new RuntimeException("OCR failed")));
         
         // When: Process document
@@ -162,14 +144,11 @@ class PdfOcrServiceTest {
         var testPdfResource = new ClassPathResource("pdfs/five-pager.pdf");
         var testPdfBytes = testPdfResource.getInputStream().readAllBytes();
         
-        // Mock WebClient download
-        when(webClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.bodyToMono(byte[].class)).thenReturn(Mono.just(testPdfBytes));
+        // Mock PaperlessApiClient download
+        when(paperlessApiClient.downloadPdf(589L)).thenReturn(Mono.just(testPdfBytes));
         
         // Mock OCR client responses
-        when(ocrClient.extractTextAsMarkdown(any(BufferedImage.class), anyString(), anyString()))
+        when(ocrClient.extractText(any(BufferedImage.class), anyString(), anyString()))
                 .thenReturn(Mono.just("OCR result"));
         
         // When: Process document
@@ -182,7 +161,7 @@ class PdfOcrServiceTest {
         
         // Capture all OCR calls to verify image processing
         var imageCaptor = ArgumentCaptor.forClass(BufferedImage.class);
-        verify(ocrClient, times(5)).extractTextAsMarkdown(
+        verify(ocrClient, times(5)).extractText(
                 imageCaptor.capture(), 
                 anyString(), 
                 anyString()

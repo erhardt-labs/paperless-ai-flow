@@ -17,5 +17,5 @@ public interface OcrClient {
      * @param prompt the prompt to use for OCR instruction
      * @return the extracted text as markdown
      */
-    Mono<String> extractTextAsMarkdown(BufferedImage image, String model, String prompt);
+    Mono<String> extractText(BufferedImage image, String model, String prompt);
 }

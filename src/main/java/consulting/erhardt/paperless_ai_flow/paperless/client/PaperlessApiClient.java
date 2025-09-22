@@ -130,4 +130,19 @@ public class PaperlessApiClient {
                 .doOnNext(response -> log.debug("Fetched {} custom fields", response.getCount()))
                 .flatMapMany(response -> Flux.fromIterable(response.getResults()));
     }
+    
+    /**
+     * Download PDF document from Paperless
+     */
+    public Mono<byte[]> downloadPdf(Long documentId) {
+        log.debug("Downloading PDF for document ID: {}", documentId);
+        
+        return webClient.get()
+                .uri("/api/documents/{id}/download/", documentId)
+                .header("Authorization", "Token " + config.getApi().getToken())
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .doOnSuccess(bytes -> log.debug("Downloaded PDF for document {}: {} bytes", documentId, bytes.length))
+                .doOnError(error -> log.error("Failed to download PDF for document {}: {}", documentId, error.getMessage()));
+    }
 }

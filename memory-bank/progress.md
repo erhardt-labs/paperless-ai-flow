@@ -60,7 +60,7 @@
 2. **Document Processing Enhancement**
    - ✅ Parallel AI metadata extraction (title, tags, correspondent, custom fields)
    - ✅ Extended PaperlessApiClient with correspondent and custom field APIs
-   - [ ] Document download functionality in PaperlessApiClient
+   - ✅ Document download functionality in PaperlessApiClient with proper authentication
    - [ ] Document metadata update operations
    - [ ] Processed document tagging and state tracking
    - [ ] Error handling for document processing failures

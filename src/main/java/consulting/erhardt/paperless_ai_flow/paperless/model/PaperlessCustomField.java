@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * Paperless-ngx custom field definition model
  */
@@ -12,20 +15,19 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @Jacksonized
 public class PaperlessCustomField {
-    
+
+    @JsonProperty("id")
     Long id;
-    
+
+    @JsonProperty("name")
     String name;
     
     @JsonProperty("data_type")
     String dataType;
     
     @JsonProperty("extra_data")
-    String extraData;
+    Map<String, Object> extraData;
     
-    @JsonProperty("created")
-    String created;
-    
-    @JsonProperty("modified")
-    String modified;
+    @JsonProperty("document_count")
+    Integer documentCount;
 }

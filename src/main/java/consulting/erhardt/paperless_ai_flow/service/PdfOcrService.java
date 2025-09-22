@@ -2,21 +2,19 @@ package consulting.erhardt.paperless_ai_flow.service;
 
 import consulting.erhardt.paperless_ai_flow.config.PipelineConfiguration.PipelineDefinition;
 import consulting.erhardt.paperless_ai_flow.ocr.OcrClient;
+import consulting.erhardt.paperless_ai_flow.paperless.client.PaperlessApiClient;
 import consulting.erhardt.paperless_ai_flow.paperless.model.PaperlessDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.util.List;
 import java.util.stream.IntStream;
 
 /**
@@ -28,7 +26,7 @@ import java.util.stream.IntStream;
 @Slf4j
 public class PdfOcrService {
     
-    private final WebClient webClient;
+    private final PaperlessApiClient paperlessApiClient;
     private final OcrClient ocrClient;
     
     /**
@@ -44,7 +42,7 @@ public class PdfOcrService {
         
         log.info("Processing document {} with OCR model: {}", documentId, ocrConfig.getModel());
         
-        return downloadPdf(document)
+        return paperlessApiClient.downloadPdf(document.getId())
                 .flatMapMany(pdfBytes -> convertPdfToImages(pdfBytes, documentId))
                 .collectList()
                 .flatMap(images -> processImagesWithOcr(Flux.fromIterable(images), ocrConfig.getModel(), ocrConfig.getPrompt()))
@@ -52,22 +50,6 @@ public class PdfOcrService {
                         documentId, result.length()))
                 .doOnError(error -> log.error("Failed to process document {}: {}", 
                         documentId, error.getMessage(), error));
-    }
-    
-    /**
-     * Download PDF from Paperless API
-     */
-    private Mono<byte[]> downloadPdf(PaperlessDocument document) {
-        // Note: This assumes the base URL and token are available from WebClient configuration
-        var downloadUrl = String.format("/api/documents/%d/download/", document.getId());
-        
-        log.debug("Downloading PDF from: {}", downloadUrl);
-        
-        return webClient.get()
-                .uri(downloadUrl)
-                .retrieve()
-                .bodyToMono(byte[].class)
-                .doOnSuccess(bytes -> log.debug("Downloaded PDF: {} bytes", bytes.length));
     }
     
     /**
@@ -95,6 +77,7 @@ public class PdfOcrService {
                             } catch (IOException e) {
                                 log.error("Failed to render page {} of document {}: {}", 
                                         pageIndex + 1, documentId, e.getMessage(), e);
+
                                 throw new RuntimeException("Failed to render PDF page", e);
                             }
                         })
@@ -120,7 +103,7 @@ public class PdfOcrService {
                     
                     log.debug("Processing page {} with OCR", pageNumber);
                     
-                    return ocrClient.extractTextAsMarkdown(image, model, prompt)
+                    return ocrClient.extractText(image, model, prompt)
                             .map(text -> String.format("## Page %d%n%n%s%n%n", pageNumber, text))
                             .doOnSuccess(result -> log.debug("OCR completed for page {}", pageNumber));
                 })

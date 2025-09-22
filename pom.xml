@@ -29,6 +29,8 @@
 	<properties>
 		<java.version>21</java.version>
 		<spring-ai.version>1.0.2</spring-ai.version>
+        <pdfbox.version>3.0.4</pdfbox.version>
+        <twelvemonkeys-imageio.version>3.12.0</twelvemonkeys-imageio.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -74,8 +76,33 @@
 		<dependency>
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>
-			<version>3.0.3</version>
+			<version>${pdfbox.version}</version>
 		</dependency>
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>jbig2-imageio</artifactId>
+            <version>${pdfbox.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-core</artifactId>
+            <version>${twelvemonkeys-imageio.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-metadata</artifactId>
+            <version>${twelvemonkeys-imageio.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>${twelvemonkeys-imageio.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-tiff</artifactId>
+            <version>${twelvemonkeys-imageio.version}</version>
+        </dependency>
 		<!-- Reactor test support -->
 		<dependency>
 			<groupId>io.projectreactor</groupId>
