@@ -2,17 +2,43 @@
 
 ## Architecture Overview
 
-### Headless Microservice Architecture
-- **Single-responsibility service** focused solely on document processing
+### Multi-Module Microservice Architecture
+- **Main Application Module (app):** Business logic, pipeline orchestration, document processing services
+- **Paperless Client Module (paperless-ngx-client):** Dedicated external API integration with complete reactive implementation
 - **Stateless design** with all state maintained in Paperless-ngx
+- **Reactive-first architecture** using Project Reactor (Mono/Flux) throughout the entire stack
 - **Event-driven processing** via polling and pipeline execution
 - **Container-native** deployment model
+
+### Module Structure & Boundaries
+```
+paperless-ai-flow/
+├── app/                           # Main application module
+│   ├── src/main/java/.../app/
+│   │   ├── ai/                    # AI extraction models
+│   │   ├── config/                # Application configuration
+│   │   ├── integration/           # Spring Integration flows
+│   │   ├── service/               # Business logic services
+│   │   └── ocr/                   # OCR processing
+│   └── pom.xml                    # App dependencies
+├── paperless-ngx-client/         # External API client module
+│   ├── src/main/java/.../paperless_ngx/client/
+│   │   ├── configs/               # WebClient & cache configuration
+│   │   ├── dtos/                  # Business domain DTOs
+│   │   ├── entities/              # API response entities
+│   │   ├── mappers/               # Entity-to-DTO mappers
+│   │   ├── services/              # Reactive API services
+│   │   └── utils/                 # Pagination utilities
+│   └── pom.xml                    # Client dependencies
+└── pom.xml                        # Parent POM
+```
 
 ### YAML-Driven Configuration
 - **Declarative configuration** defining sources, providers, and processing pipelines
 - **Runtime reconfiguration** via file watching or service restart
 - **Environment variable injection** for sensitive values (API keys, tokens)
 - **Schema validation** ensuring configuration correctness at startup
+- **Module-specific configuration** isolated within respective modules
 
 ## Core Design Patterns
 
@@ -71,6 +97,36 @@ DocumentContext {
   documentHash: String
 }
 ```
+
+### Reactive Programming Pattern
+**Purpose:** Provide consistent, non-blocking I/O throughout the entire application stack using Project Reactor
+
+**Core Implementation:**
+- **Service Layer:** All methods return `Mono<T>` for single values, `Flux<T>` for streams
+- **API Client:** Paperless-ngx-client module uses reactive WebClient exclusively
+- **Error Handling:** Reactive error operators (`onErrorMap`, `onErrorResume`, `onErrorReturn`)
+- **Composition:** Chain operations with `flatMap`, `map`, `filter`, `zipWith`
+
+**Key Components:**
+```
+AbstractReactivePagedService<T> {
+  // Handles paginated API responses with backpressure
+  getAllItems(): Flux<T>
+  getPage(pageNumber): Mono<PagedResponse<T>>
+}
+
+DocumentService extends AbstractReactivePagedService<Document>
+TagService extends AbstractReactivePagedService<Tag>
+CorrespondentService extends AbstractReactivePagedService<Correspondent>
+CustomFieldsService extends AbstractReactivePagedService<CustomField>
+```
+
+**Benefits:**
+- **Non-blocking I/O:** Better resource utilization under high load
+- **Backpressure handling:** Natural streaming with demand-based flow control
+- **Composability:** Easy chaining of async operations
+- **Testing:** StepVerifier enables deterministic async testing
+- **Error propagation:** Maintains context through reactive chains
 
 ### Idempotency Pattern
 **Purpose:** Ensure documents are processed exactly once per pipeline version

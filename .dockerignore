@@ -1,0 +1,65 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Maven build artifacts
+target/
+**/target/
+!app/target/*.jar
+
+# Test files and logs
+*.log
+logs/
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Configuration files not needed in container
+.editorconfig
+.clineignore
+.clinerules/
+
+# Memory bank files (not needed in container)
+memory-bank/
+
+# CI/CD files
+.github/
+Jenkinsfile
+docker-compose.yml
+docker-compose.override.yml
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Node.js (if any frontend assets exist)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Application-specific
+application-local.yml
+application-dev.yml
+config/local/

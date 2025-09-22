@@ -1,0 +1,4 @@
+paperless:
+  api:
+    base-url: ""
+    token: test-token

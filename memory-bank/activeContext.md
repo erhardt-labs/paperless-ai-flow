@@ -85,15 +85,31 @@
 ## Important Patterns & Preferences
 
 ### Code Organization Patterns
+**Multi-Module Maven Structure (IMPLEMENTED):**
 ```
-src/main/java/consulting/erhardt/paperless_ai_flow/
-├── config/          # Configuration POJOs and validation
-├── provider/        # OCR and LLM provider implementations
-├── pipeline/        # Pipeline engine and step implementations
-├── paperless/       # Paperless API client and models
-├── service/         # Core business services
-└── domain/          # Domain objects and interfaces
+paperless-ai-flow/
+├── app/                           # Main application module
+│   └── src/main/java/.../app/
+│       ├── ai/                    # AI extraction models (Title, Tag, Correspondent, CustomField)
+│       ├── config/                # Application configuration (Pipeline, WebClient)
+│       ├── integration/           # Spring Integration flows (DocumentPollingIntegration)
+│       ├── ocr/                   # OCR processing (OcrClient, PdfOcrService)
+│       ├── service/               # Business logic services (DocumentPolling, MetadataExtraction)
+│       └── paperless/             # Legacy paperless code (to be removed)
+├── paperless-ngx-client/         # External API client module
+│   └── src/main/java/.../paperless_ngx/client/
+│       ├── configs/               # WebClient configuration, caching
+│       ├── dtos/                  # Business domain objects (Document, Tag, Correspondent)
+│       ├── entities/              # API response entities (DocumentResponse, TagResponse)
+│       ├── mappers/               # Entity-to-DTO conversion (DocumentMapper, TagMapper)
+│       ├── services/              # Reactive API services (DocumentService, TagService)
+│       └── utils/                 # Pagination utilities
+└── pom.xml                        # Parent POM with shared configuration
 ```
+
+**Module Responsibilities:**
+- **app:** Business logic, pipeline orchestration, AI processing, configuration management
+- **paperless-ngx-client:** External API integration, reactive services, response mapping, caching
 
 ### Configuration Patterns
 - **Environment variable injection** using Spring's `${VAR:default}` syntax

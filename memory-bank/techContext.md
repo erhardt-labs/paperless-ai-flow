@@ -13,7 +13,14 @@
 - **Spring WebFlux** for reactive web stack and HTTP clients
 - **Spring AI 1.0.2** with OpenAI integration for LLM/OCR providers
 - **Spring Configuration Processor** for YAML configuration binding and IDE support
-- **Project Reactor** (Mono/Flux) for reactive programming throughout the stack
+- **Project Reactor** (Mono/Flux) for reactive programming throughout the entire stack
+
+### Multi-Module Architecture
+- **Parent POM** with shared dependency management and Java 21 configuration
+- **App Module (app/):** Main application with business logic, AI models, services, and Spring Integration
+- **Paperless Client Module (paperless-ngx-client/):** Dedicated external API client with complete reactive implementation
+- **Clear dependency boundaries:** App depends on paperless-ngx-client, ensuring proper separation of concerns
+- **Independent testing:** Each module has its own test suite with appropriate scope and mocking
 
 ### Build & Packaging
 - **Maven 3.9+** for dependency management and build lifecycle

@@ -79,3 +79,71 @@
 - Review API documentation before finalizing architecture patterns
 - Update activeContext when API knowledge changes implementation approach
 - Document API-specific constraints in technical decision rationale
+
+## Multi-Module Architecture & Reactive Programming
+
+### Multi-Module Maven Pattern
+**Core Principle:** Split external integrations into dedicated client modules for better maintainability, testability, and reuse.
+
+**Structure:**
+- **Application module:** Business logic, domain services, pipeline orchestration
+- **Client modules:** External API integration, response mapping, configuration
+- **Dependency flow:** Application depends on clients, never the reverse
+
+**Benefits:**
+- Independent testing and development of integration vs business logic
+- Clear boundaries prevent coupling between external APIs and domain logic
+- Client modules can be versioned and reused across projects
+- Compilation boundaries enforce architectural constraints
+
+**Implementation Guidelines:**
+- Keep API response entities separate from business domain DTOs using dedicated mappers
+- Isolate WebClient configuration and authentication in client modules
+- Use proper Maven scope (compile vs runtime) for shared dependencies
+
+### Reactive-First Architecture Pattern
+**Core Principle:** Use Mono/Flux throughout the entire stack, not just at HTTP boundaries, for consistent non-blocking I/O.
+
+**Implementation Strategy:**
+- **Service Layer:** All methods return Mono<T> or Flux<T> for async operations
+- **Data Access:** Use reactive repository patterns and WebClient for all I/O
+- **Error Handling:** Leverage reactive error operators (onErrorMap, onErrorResume)
+- **Testing:** Use reactor-test StepVerifier for async testing
+
+**Benefits:**
+- Consistent programming model across all layers
+- Better resource utilization through non-blocking I/O
+- Natural backpressure handling for streaming operations
+- Improved scalability under high concurrent load
+
+**Key Patterns:**
+- **AbstractReactivePagedService:** Reusable pattern for handling paginated API responses with backpressure
+- **Reactive Composition:** Chain operations using flatMap, map, and filter operators
+- **Error Propagation:** Maintain meaningful error context through reactive chains
+
+### Client Module Separation Pattern
+**Pattern: Dedicated External Integration Modules**
+- **Purpose:** Isolate external API concerns from business logic
+- **Structure:** Complete client with entities, DTOs, mappers, services, and configuration
+- **Testing:** Independent test suite with WireMock for external API mocking
+- **Configuration:** Self-contained configuration classes and properties
+
+**Rationale:** Enables independent evolution of integration logic without affecting core business functionality. Facilitates testing, maintenance, and potential reuse in other projects.
+
+## Refactoring Strategies
+
+### Reactive Migration Pattern
+**Approach:** Systematic conversion from blocking to reactive programming model.
+
+**Migration Steps:**
+1. **Identify I/O boundaries** - all network calls, database access, file operations
+2. **Convert return types** - methods return Mono<T> instead of T, Flux<T> instead of List<T>
+3. **Replace blocking calls** - WebClient instead of RestTemplate, reactive repositories
+4. **Update composition** - use flatMap, map instead of imperative control flow
+5. **Error handling** - convert try/catch to reactive error operators
+
+**Critical Considerations:**
+- Ensure proper error propagation through reactive chains
+- Maintain meaningful error messages and context
+- Convert all synchronous service calls to reactive composition patterns
+- Test reactive flows with StepVerifier and reactor-test
