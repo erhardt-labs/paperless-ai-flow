@@ -86,3 +86,77 @@ Improvements_Identified_For_Consolidation:
 - JVM containerization: Use MaxRAMPercentage instead of fixed heap sizes, enable container-specific optimizations
 - Spring Boot containerization: Ensure spring-boot-maven-plugin is enabled for executable JAR creation
 ---
+
+---
+Date: 2025-09-24
+TaskRef: "Comprehensive memory bank update after major AI metadata extraction framework implementation"
+
+Learnings:
+- Complete AI metadata extraction framework implemented with AbstractAiModel<T> template method pattern
+- DocumentMetadataExtractionService provides parallel processing using Mono.zip() for optimal performance
+- Four specialized extraction models: TitleExtractionModel, TagExtractionModel, CorrespondentExtractionModel, CustomFieldExtractionModel
+- Spring AI integration with OpenAiChatModel and structured JSON output using ResponseFormat.Type.JSON_SCHEMA
+- Resource-based configuration pattern: prompts in src/main/resources/prompts/, schemas in src/main/resources/schemas/
+- Configuration-driven processing with boolean flags (extraction.title, extraction.tags, etc.) for selective AI processing
+- Optional-based graceful degradation when AI processing fails - individual extraction failures don't break entire process
+- FileUtils.readFileFromResources() pattern for loading prompt templates and JSON schemas
+- Schedulers.boundedElastic() for reactive processing of blocking AI calls
+- Template-based prompt engineering with SystemMessage and UserMessage separation
+
+Difficulties:
+- Memory bank was significantly out of date, requiring comprehensive analysis of new codebase structure
+- Identifying the scope of changes required careful examination of multiple interconnected components
+- Balancing detail level in documentation updates - ensuring new patterns were properly captured without overwhelming existing content
+
+Successes:
+- Successfully identified and documented complete AI extraction framework that represents major project milestone
+- Updated all core memory bank files (activeContext.md, progress.md, systemPatterns.md, techContext.md) to reflect current state
+- Documented new architectural patterns: AI Extraction Framework, Parallel AI Processing, Resource-Based Configuration, Spring AI Integration
+- Maintained consistency across memory bank files while capturing significant architectural evolution
+- Properly reflected project phase transition from "Pipeline Integration" to "Document Update Phase"
+
+Improvements_Identified_For_Consolidation:
+- Template Method Pattern for AI processing: AbstractAiModel<T> provides consistent processing flow with customizable extraction logic
+- Parallel reactive processing: Mono.zip() enables efficient parallel AI calls with graceful error handling
+- Resource-based configuration: External prompts and schemas enable maintainable AI prompt engineering
+- Configuration-driven AI processing: Boolean flags allow selective extraction based on pipeline requirements
+- Spring AI structured output: JSON Schema enforcement via ResponseFormat ensures reliable data extraction
+---
+
+---
+Date: 2025-09-24
+TaskRef: "Comprehensive unit testing implementation for getUserPrompt methods and JSON Schema compatibility"
+
+Learnings:
+- Service mocking in reactive Spring applications: Mock services return `Mono<List<T>>` not `Flux<T>` - this is crucial for proper testing
+- AbstractReactivePagedService pattern means getAll() returns `Mono<List<T>>` for caching, while internal processing uses `Flux<T>`
+- Jackson deserialization with Lombok @Value requires explicit `@JsonCreator` and `@JsonProperty` annotations for proper constructor binding
+- JSON Schema validation with networknt library: Can return localized error messages (German/English) requiring flexible test assertions  
+- Template Method Pattern testing: Focus on testing the customizable methods (getUserPrompt) rather than the template structure
+- Configuration default handling: Clear separation between configuration layer (returns null) and service layer (handles defaults)
+- PdfOcrService correctly implements default prompt loading using `Objects.requireNonNullElse(config.getPrompt(), FileUtils.readFileFromResources("prompts/ocr.md"))`
+- Spring Boot test compilation requires proper annotation processor configuration for Lombok
+- JSON Schema validator dependency: `com.networknt:json-schema-validator:1.5.1` works well with Spring Boot testing
+
+Difficulties:
+- Initial service mocking confusion: Used `Flux.fromIterable()` instead of `Mono.just(List.of())` causing compilation failures  
+- Jackson deserialization failures with Lombok @Value required adding explicit constructor annotations
+- Locale-specific error messages from JSON Schema validator needed flexible assertion patterns
+- Configuration test expectations: Had to understand architectural separation between config (null) and service (default) layers
+
+Successes:
+- Complete test coverage for all getUserPrompt methods across 4 extraction models (16 tests total)
+- Established JSON Schema compatibility testing pattern with TitleDtoTest (6 tests)
+- Fixed all broken tests including PipelineConfigurationTest (3 tests)
+- All 26 tests now passing, demonstrating robust testing framework
+- Proper service mocking patterns established for reactive Spring applications
+- Jackson compatibility resolved for Lombok DTOs with proper annotations
+
+Improvements_Identified_For_Consolidation:
+- Reactive service mocking pattern: Use `Mono.just(List.of(...))` not `Flux.fromIterable()` for services extending AbstractReactivePagedService
+- Lombok Jackson compatibility: Add @JsonCreator and @JsonProperty annotations to @Value classes for proper deserialization
+- JSON Schema testing framework: Use networknt validator with flexible assertions handling localized error messages
+- Configuration testing strategy: Test that config returns null, verify service layer handles defaults appropriately
+- Template Method testing: Focus on testing customizable methods (getUserPrompt) with proper service mocking
+- Test organization: Create test classes in same package structure as source for protected method access
+---

@@ -170,10 +170,16 @@ resources:
     <artifactId>spring-boot-starter-webflux</artifactId>
 </dependency>
 
-<!-- Spring AI -->
+<!-- Spring AI - Complete Implementation -->
 <dependency>
     <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-starter-model-openai</artifactId>
+</dependency>
+
+<!-- AI Processing Dependencies (NEW) -->
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
 </dependency>
 
 <!-- PDF Processing -->
@@ -181,6 +187,12 @@ resources:
     <groupId>org.apache.pdfbox</groupId>
     <artifactId>pdfbox</artifactId>
     <version>3.0.3</version>
+</dependency>
+
+<!-- File Utilities (NEW) -->
+<dependency>
+    <groupId>consulting.erhardt.paperless_ai_flow</groupId>
+    <artifactId>utils</artifactId>
 </dependency>
 ```
 

@@ -130,6 +130,128 @@
 
 **Rationale:** Enables independent evolution of integration logic without affecting core business functionality. Facilitates testing, maintenance, and potential reuse in other projects.
 
+## AI Processing & Spring AI Integration
+
+### Template Method Pattern for AI Processing
+**Core Principle:** Consistent AI processing flow with customizable extraction logic using AbstractAiModel<T> template method pattern.
+
+**Structure:**
+```java
+AbstractAiModel<T> {
+  // Template method - consistent processing flow
+  process(String content): T
+  
+  // Abstract methods for customization
+  getSystemPrompt(): String
+  getUserPrompt(String content): String  
+  getJsonSchema(): String
+  getResponseClass(): Class<T>
+  getDefaultModel(): String
+}
+
+// Concrete implementations for each metadata type
+TitleExtractionModel extends AbstractAiModel<TitleDto>
+TagExtractionModel extends AbstractAiModel<TagsDto>
+CorrespondentExtractionModel extends AbstractAiModel<CorrespondentDto>
+CustomFieldExtractionModel extends AbstractAiModel<CustomFieldsDto>
+```
+
+**Benefits:**
+- **Consistency:** All AI processing follows identical pattern
+- **Extensibility:** New extraction types require minimal implementation
+- **Maintainability:** Changes to core processing logic affect all implementations
+- **Testability:** Abstract template enables consistent mocking and testing
+
+### Parallel AI Processing Pattern
+**Core Principle:** Optimize AI metadata extraction performance through parallel reactive processing.
+
+**Implementation with Mono.zip():**
+```java
+// Run AI extractions in parallel when enabled
+var titleMono = extraction.isTitle() ? 
+  extractTitle(content) : Mono.just(Optional.empty());
+var tagsMono = extraction.isTags() ?
+  extractTags(content) : Mono.just(Optional.empty());
+var correspondentMono = extraction.isCorrespondent() ?
+  extractCorrespondent(content) : Mono.just(Optional.empty());
+var customFieldsMono = extraction.isCustomFields() ?
+  extractCustomFields(content) : Mono.just(Optional.empty());
+
+return Mono.zip(titleMono, tagsMono, correspondentMono, customFieldsMono)
+  .map(results -> buildDocumentMetadata(results));
+```
+
+**Benefits:**
+- **Performance:** Parallel AI calls reduce total processing time significantly
+- **Fault tolerance:** Individual extraction failures don't break entire process
+- **Configuration-driven:** Boolean flags enable selective processing
+- **Resource efficiency:** Schedulers.boundedElastic() optimizes blocking AI calls
+
+### Resource-Based Configuration Pattern
+**Core Principle:** Externalize AI prompts and JSON schemas for maintainability and version control.
+
+**Structure:**
+```
+src/main/resources/
+├── prompts/                    # AI prompt templates (Markdown)
+│   ├── title.md               # Title extraction prompt
+│   ├── tags.md                # Tag extraction prompt
+│   ├── correspondent.md       # Correspondent extraction prompt
+│   └── custom-fields.md       # Custom fields extraction prompt
+└── schemas/                   # JSON Schema definitions
+    ├── title.json             # Title response schema
+    ├── tags.json              # Tags response schema
+    ├── correspondent.json     # Correspondent response schema
+    └── custom-fields.json     # Custom fields response schema
+```
+
+**Implementation:**
+- **FileUtils.readFileFromResources()** for loading prompt templates and schemas
+- **JSON Schema enforcement** via OpenAI ResponseFormat for structured output
+- **Version control friendly:** Plain text files enable collaborative prompt engineering
+- **Environment separation:** Different prompts per environment possible
+
+**Benefits:**
+- **Maintainability:** Non-developers can edit prompts without code changes
+- **Version control:** Track prompt changes alongside code changes
+- **Testing:** Easy to create test-specific prompts and schemas
+- **Flexibility:** Runtime prompt loading enables A/B testing
+
+### Spring AI Structured Output Pattern
+**Core Principle:** Leverage Spring AI framework with JSON Schema for reliable, structured AI responses.
+
+**Implementation:**
+```java
+OpenAiChatOptions.builder()
+  .model(getDefaultModel())                     // Configurable model selection
+  .responseFormat(new ResponseFormat(           // Structured output
+    ResponseFormat.Type.JSON_SCHEMA, 
+    getJsonSchema()))
+  .build();
+
+Prompt prompt = new Prompt(                     // Message composition
+  List.of(systemMessage, userMessage), 
+  chatOptions);
+```
+
+**Benefits:**
+- **Reliability:** JSON Schema validation ensures consistent response format
+- **Framework integration:** Spring AI abstracts provider-specific details
+- **Model flexibility:** Easy switching between OpenAI models (gpt-4, gpt-4o-mini, etc.)
+- **Error handling:** Structured responses enable predictable error processing
+
+### Configuration-Driven AI Processing
+**Pattern: Boolean Flag Control for Selective Extraction**
+- **Purpose:** Enable/disable specific AI extractions based on pipeline requirements
+- **Configuration:** extraction.title, extraction.tags, extraction.correspondent, extraction.customFields boolean flags
+- **Performance benefit:** Skip unnecessary AI calls when metadata type not needed
+- **Cost optimization:** Reduce API usage by processing only required extractions
+
+**Implementation Guidelines:**
+- Use Optional.empty() for disabled extractions to maintain consistent return types
+- Parallel processing structure remains consistent regardless of enabled extractions
+- Configuration changes require no code modifications
+
 ## Refactoring Strategies
 
 ### Reactive Migration Pattern

@@ -98,6 +98,111 @@ DocumentContext {
 }
 ```
 
+### AI Extraction Framework Pattern (NEW)
+**Purpose:** Provide consistent, template-based AI processing for document metadata extraction
+
+**Core Architecture:**
+```
+AbstractAiModel<T> {
+  // Template method pattern for AI processing
+  process(String content): T
+  // Abstract methods for customization
+  getSystemPrompt(): String
+  getUserPrompt(String content): String  
+  getJsonSchema(): String
+  getResponseClass(): Class<T>
+  getDefaultModel(): String
+}
+
+Concrete implementations:
+├── TitleExtractionModel extends AbstractAiModel<TitleDto>
+├── TagExtractionModel extends AbstractAiModel<TagsDto>
+├── CorrespondentExtractionModel extends AbstractAiModel<CorrespondentDto>
+└── CustomFieldExtractionModel extends AbstractAiModel<CustomFieldsDto>
+```
+
+**Key Features:**
+- **Template Method Pattern:** Consistent processing flow with customizable extraction logic
+- **JSON Schema Validation:** OpenAI ResponseFormat.Type.JSON_SCHEMA ensures structured output
+- **Resource-based Configuration:** Prompts in `src/main/resources/prompts/`, schemas in `src/main/resources/schemas/`
+- **Model Selection:** Configurable model per extraction type (e.g., "openai/o4-mini")
+- **Error Handling:** Optional-based graceful degradation when AI processing fails
+
+### Parallel AI Processing Pattern (NEW)
+**Purpose:** Optimize AI metadata extraction through parallel processing
+
+**Implementation in DocumentMetadataExtractionService:**
+```java
+// Run AI extractions in parallel when enabled
+var titleMono = extraction.isTitle() ? 
+  extractTitle(content) : Mono.just(Optional.empty());
+var tagsMono = extraction.isTags() ?
+  extractTags(content) : Mono.just(Optional.empty());
+var correspondentMono = extraction.isCorrespondent() ?
+  extractCorrespondent(content) : Mono.just(Optional.empty());
+var customFieldsMono = extraction.isCustomFields() ?
+  extractCustomFields(content) : Mono.just(Optional.empty());
+
+return Mono.zip(titleMono, tagsMono, correspondentMono, customFieldsMono)
+  .map(results -> buildDocumentMetadata(results));
+```
+
+**Benefits:**
+- **Performance:** Parallel AI calls reduce total processing time
+- **Configuration-driven:** Extraction types controlled by boolean flags
+- **Fault tolerance:** Individual extraction failures don't break entire process
+- **Resource efficiency:** Uses Schedulers.boundedElastic() for blocking AI calls
+
+### Resource-Based Configuration Pattern (NEW)
+**Purpose:** Externalize AI prompts and schemas for maintainability and flexibility
+
+**Structure:**
+```
+src/main/resources/
+├── prompts/                    # AI prompt templates
+│   ├── title.md               # Title extraction prompt
+│   ├── tags.md                # Tag extraction prompt
+│   ├── correspondent.md       # Correspondent extraction prompt
+│   ├── custom-fields.md       # Custom fields extraction prompt
+│   └── ocr.md                 # OCR processing prompt
+└── schemas/                   # JSON Schema definitions
+    ├── title.json             # Title response schema
+    ├── tags.json              # Tags response schema
+    ├── correspondent.json     # Correspondent response schema
+    └── custom-fields.json     # Custom fields response schema
+```
+
+**Implementation:**
+- **FileUtils.readFileFromResources()** for loading prompt templates and schemas
+- **JSON Schema enforcement** via OpenAI ResponseFormat for structured output
+- **Version control friendly:** Plain text files enable easy prompt engineering
+- **Environment separation:** Different prompts per environment possible
+- **Default prompt handling:** PdfOcrService loads default from prompts/ocr.md when configuration prompt is null
+
+### Spring AI Integration Pattern (NEW)
+**Purpose:** Leverage Spring AI framework for consistent LLM integration
+
+**Core Components:**
+```java
+OpenAiChatModel openAiChatModel           // Spring AI chat client
+OpenAiChatOptions.builder()               // Request configuration
+  .model(getDefaultModel())               // Model selection
+  .responseFormat(new ResponseFormat(     // Structured output
+    ResponseFormat.Type.JSON_SCHEMA, 
+    getJsonSchema()))
+  .build();
+
+Prompt prompt = new Prompt(               // Message composition
+  List.of(systemMessage, userMessage), 
+  chatOptions);
+```
+
+**Benefits:**
+- **Framework consistency:** Leverages Spring Boot auto-configuration
+- **Structured output:** JSON Schema validation ensures reliable data extraction
+- **Model flexibility:** Easy switching between OpenAI models
+- **Future extensibility:** Spring AI abstracts provider-specific details
+
 ### Reactive Programming Pattern
 **Purpose:** Provide consistent, non-blocking I/O throughout the entire application stack using Project Reactor
 
