@@ -2,38 +2,14 @@ package consulting.erhardt.paperless_ai_flow.app.ai.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import consulting.erhardt.paperless_ai_flow.app.ai.dtos.TitleDto;
-import lombok.NonNull;
-import lombok.SneakyThrows;
+import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.ResponseFormat;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+
 @Service
-public class TitleExtractionModel extends AbstractAiModel {
-  private static final String SYSTEM_PROMPT = """
-        I will provide you with the content of a document that has been partially read by OCR (so it may contain errors).
-        Your task is to find a suitable document title that I can use as the title in the paperless-ngx program.
-    """;
-
-  private static final String JSON_SCHEMA = """
-    {
-      "type": "object",
-      "properties": {
-        "title": {
-          "type": "string",
-          "description": "Title used for the document."
-        }
-      },
-      "required": ["title"],
-      "additionalProperties": false
-    }
-    """;
-
-  private static final OpenAiChatOptions CHAT_OPTIONS = OpenAiChatOptions.builder()
-    .model("openai/o4-mini")
-    .responseFormat(new ResponseFormat(ResponseFormat.Type.JSON_SCHEMA, JSON_SCHEMA))
-    .build();
+public class TitleExtractionModel extends AbstractAiModel<TitleDto> {
 
   public TitleExtractionModel(
     OpenAiChatModel openAiChatModel,
@@ -42,9 +18,34 @@ public class TitleExtractionModel extends AbstractAiModel {
     super(openAiChatModel, objectMapper);
   }
 
-  @SneakyThrows
-  public @NonNull String process(@NonNull String content) {
-    return processModel(content, TitleDto.class, SYSTEM_PROMPT, CHAT_OPTIONS).getTitle();
+  @Override
+  protected String getSystemPrompt() throws IOException {
+    return FileUtils.readFileFromResources("prompts/tags.md");
+  }
+
+  @Override
+  protected String getJsonSchema() throws IOException {
+    return FileUtils.readFileFromResources("schemas/tags.md");
+  }
+
+  @Override
+  protected String getDefaultModel() {
+    return "openai/o4-mini";
+  }
+
+  @Override
+  protected Class<TitleDto> getResponseClass() {
+    return TitleDto.class;
+  }
+
+  @Override
+  protected String getUserPrompt(String content) {
+    var prompt = new StringBuilder();
+
+    // add content
+    addDocumentContent(prompt, content);
+
+    return prompt.toString();
   }
 }
 

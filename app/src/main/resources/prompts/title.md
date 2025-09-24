@@ -1,0 +1,2 @@
+I will provide you with the content of a document that has been partially read by OCR (so it may contain errors).
+Your task is to find a suitable document title that I can use as the title in the paperless-ngx program.

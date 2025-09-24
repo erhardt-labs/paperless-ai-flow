@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "correspondentId": {
+      "type": ["integer", "null"],
+      "format": "int64",
+      "description": "ID of the correspondent that matches the document sender, or null if no match."
+    }
+  },
+  "required": ["correspondentId"],
+  "additionalProperties": false
+}

@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Title used for the document."
+    }
+  },
+  "required": ["title"],
+  "additionalProperties": false
+}

@@ -2,71 +2,68 @@ package consulting.erhardt.paperless_ai_flow.app.ai.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import consulting.erhardt.paperless_ai_flow.app.ai.dtos.TagsDto;
-import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
-import lombok.NonNull;
-import lombok.SneakyThrows;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.TagService;
+import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.ai.openai.api.ResponseFormat;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.io.IOException;
 
 @Service
-public class TagExtractionModel extends AbstractAiModel {
-  private static final String SYSTEM_PROMPT = """
-    I will provide you with the content of a document and a list of available tags.
-    Your task is to select the most appropriate tags from the available list that match the content of the document.
-    Return the IDs of the tags that are relevant to this document.
-    """;
-
-  private static final String JSON_SCHEMA = """
-    {
-      "type": "object",
-      "properties": {
-        "tagIds": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "description": "List of tag IDs that are relevant to the document."
-        }
-      },
-      "required": ["tagIds"],
-      "additionalProperties": false
-    }
-    """;
-
-  private static final OpenAiChatOptions CHAT_OPTIONS = OpenAiChatOptions.builder()
-    .model("openai/o4-mini")
-    .responseFormat(new ResponseFormat(ResponseFormat.Type.JSON_SCHEMA, JSON_SCHEMA))
-    .build();
+public class TagExtractionModel extends AbstractAiModel<TagsDto> {
+  private final TagService service;
 
   public TagExtractionModel(
     OpenAiChatModel openAiChatModel,
-    ObjectMapper objectMapper
+    ObjectMapper objectMapper,
+    TagService service
   ) {
     super(openAiChatModel, objectMapper);
+
+    this.service = service;
   }
 
-  @SneakyThrows
-  public @NonNull List<Long> process(@NonNull String content, @NonNull List<Tag> availableTags) {
-    var userPrompt = buildUserPromptWithTags(content, availableTags);
-    return processModel(userPrompt, TagsDto.class, SYSTEM_PROMPT, CHAT_OPTIONS).getTagIds();
+  @Override
+  protected String getSystemPrompt() throws IOException {
+    return FileUtils.readFileFromResources("prompts/tags.md");
   }
 
-  private String buildUserPromptWithTags(@NonNull String content, @NonNull List<Tag> availableTags) {
-    var tagsSection = new StringBuilder();
-    tagsSection.append("### Available Tags:\n");
-    for (var tag : availableTags) {
-      tagsSection.append("- ID: ").append(tag.getId())
-        .append(", Name: \"").append(tag.getName()).append("\"\n");
+  @Override
+  protected String getJsonSchema() throws IOException {
+    return FileUtils.readFileFromResources("schemas/tags.md");
+  }
+
+  @Override
+  protected String getDefaultModel() {
+    return "openai/o4-mini";
+  }
+
+  @Override
+  protected Class<TagsDto> getResponseClass() {
+    return TagsDto.class;
+  }
+
+  @Override
+  protected String getUserPrompt(String content) {
+    var available = service.getAll().block();
+    var prompt = new StringBuilder();
+
+    // add custom fields
+    prompt.append("### Available tags:\n");
+    for (var tag : available) {
+      prompt
+        .append("- ID: ")
+        .append(tag.getId())
+        .append(", Name: \"")
+        .append(tag.getName())
+        .append("\"")
+        .append("\n");
     }
-    tagsSection.append("\n");
+    prompt.append("\n");
 
-    return USER_PROMPT
-      .replace("{{CONTENT}}", content)
-      .replace("### Input:", "### Input:\n\n" + tagsSection.toString() + "### Input:");
+    // add content
+    addDocumentContent(prompt, content);
+
+    return prompt.toString();
   }
 }

@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "tagIds": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "format": "int64"
+      },
+      "description": "List of tag IDs that are relevant to the document."
+    }
+  },
+  "required": ["tagIds"],
+  "additionalProperties": false
+}

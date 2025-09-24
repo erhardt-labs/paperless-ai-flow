@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(
-	classes = consulting.erhardt.paperless_ai_flow.app.PaperlessAiFlowApplication.class,
+	classes = PaperlessAiFlowApplication.class,
 	properties = {
 		"paperless.api.base-url=http://localhost:8000",
 		"paperless.api.token=test-token",

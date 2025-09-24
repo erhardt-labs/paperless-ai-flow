@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "customFields": {
+      "type": "object",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "string"
+        }
+      },
+      "description": "Map of custom field IDs (as strings) to their extracted values."
+    }
+  },
+  "required": ["customFields"],
+  "additionalProperties": false
+}
