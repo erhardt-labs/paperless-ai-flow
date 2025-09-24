@@ -49,6 +49,26 @@ public class PipelineConfiguration {
     @NonNull
     @Builder.Default
     OcrConfiguration ocr = OcrConfiguration.builder().build();
+
+    @Builder.Default
+    ExtractionConfiguration extraction = ExtractionConfiguration.builder().build();
+
+    public PipelineDefinition(
+      @NonNull String name,
+      @NonNull SelectorConfiguration selector,
+      PollingConfiguration polling,
+      OcrConfiguration ocr,
+      ExtractionConfiguration extraction
+    ) {
+      this.name = name;
+      this.selector = selector;
+      this.polling = (polling != null) ? polling : PollingConfiguration.builder()
+        .interval(Duration.ofSeconds(60))
+        .enabled(true)
+        .build();
+      this.ocr = (ocr != null) ? ocr : OcrConfiguration.builder().build();
+      this.extraction = (extraction != null) ? extraction : ExtractionConfiguration.builder().build();
+    }
   }
 
   @Value
@@ -78,21 +98,21 @@ public class PipelineConfiguration {
     String model = "openai/gpt-4o";
 
     String prompt;
+  }
 
-    /**
-     * Get the prompt, returning default if not configured
-     */
-    public String getPrompt() {
-      return prompt != null ? prompt : getDefaultPrompt();
-    }
+  @Value
+  @Builder
+  public static class ExtractionConfiguration {
+    @Builder.Default
+    boolean title = true;
 
-    private static String getDefaultPrompt() {
-      return """
-        Just transcribe the text in this image and preserve the formatting and layout (high quality OCR).
-        Do that for ALL the text in the image. Be thorough and pay attention. This is very important.
-        The image is from a text document so be sure to continue until the bottom of the page.
-        Thanks a lot! You tend to forget about some text in the image so please focus! Use markdown format but without a code block.
-        """;
-    }
+    @Builder.Default
+    boolean correspondent = true;
+
+    @Builder.Default
+    boolean tags = true;
+
+    @Builder.Default
+    boolean customFields = true;
   }
 }

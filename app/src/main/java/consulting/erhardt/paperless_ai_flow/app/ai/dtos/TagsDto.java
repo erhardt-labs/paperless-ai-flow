@@ -10,5 +10,6 @@ import java.util.List;
 @Value
 public class TagsDto {
   @NonNull
-  List<Long> tagIds;
+  @Builder.Default
+  List<Integer> tagIds = List.of();
 }

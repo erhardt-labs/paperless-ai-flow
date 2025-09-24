@@ -6,6 +6,7 @@ import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.TagSer
 import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 
@@ -30,7 +31,7 @@ public class TagExtractionModel extends AbstractAiModel<TagsDto> {
 
   @Override
   protected String getJsonSchema() throws IOException {
-    return FileUtils.readFileFromResources("schemas/tags.md");
+    return FileUtils.readFileFromResources("schemas/tags.json");
   }
 
   @Override
@@ -45,25 +46,29 @@ public class TagExtractionModel extends AbstractAiModel<TagsDto> {
 
   @Override
   protected String getUserPrompt(String content) {
-    var available = service.getAll().block();
-    var prompt = new StringBuilder();
+    return service.getAll()
+      .subscribeOn(Schedulers.boundedElastic())
+      .map(available -> {
+        var prompt = new StringBuilder();
 
-    // add custom fields
-    prompt.append("### Available tags:\n");
-    for (var tag : available) {
-      prompt
-        .append("- ID: ")
-        .append(tag.getId())
-        .append(", Name: \"")
-        .append(tag.getName())
-        .append("\"")
-        .append("\n");
-    }
-    prompt.append("\n");
+        // add tags
+        prompt.append("### Available tags:\n");
+        for (var tag : available) {
+          prompt
+            .append("- ID: ")
+            .append(tag.getId())
+            .append(", Name: \"")
+            .append(tag.getName())
+            .append("\"")
+            .append("\n");
+        }
+        prompt.append("\n");
 
-    // add content
-    addDocumentContent(prompt, content);
+        // add content
+        addDocumentContent(prompt, content);
 
-    return prompt.toString();
+        return prompt.toString();
+      })
+      .block();
   }
 }

@@ -6,6 +6,7 @@ import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.Custom
 import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 
@@ -30,7 +31,7 @@ public class CustomFieldExtractionModel extends AbstractAiModel<CustomFieldsDto>
 
   @Override
   protected String getJsonSchema() throws IOException {
-    return FileUtils.readFileFromResources("schemas/custom-fields.md");
+    return FileUtils.readFileFromResources("schemas/custom-fields.json");
   }
 
   @Override
@@ -45,27 +46,31 @@ public class CustomFieldExtractionModel extends AbstractAiModel<CustomFieldsDto>
 
   @Override
   protected String getUserPrompt(String content) {
-    var available = service.getAll().block();
-    var prompt = new StringBuilder();
+    return service.getAll()
+      .subscribeOn(Schedulers.boundedElastic())
+      .map(available -> {
+        var prompt = new StringBuilder();
 
-    // add custom fields
-    prompt.append("### Available custom fields:\n");
-    for (var customField : available) {
-      prompt
-        .append("- ID: ")
-        .append(customField.getId())
-        .append(", Name: \"")
-        .append(customField.getName())
-        .append("\"")
-        .append(", Type: ")
-        .append(customField.getDataType())
-        .append("\n");
-    }
-    prompt.append("\n");
+        // add custom fields
+        prompt.append("### Available custom fields:\n");
+        for (var customField : available) {
+          prompt
+            .append("- ID: ")
+            .append(customField.getId())
+            .append(", Name: \"")
+            .append(customField.getName())
+            .append("\"")
+            .append(", Type: ")
+            .append(customField.getDataType())
+            .append("\n");
+        }
+        prompt.append("\n");
 
-    // add content
-    addDocumentContent(prompt, content);
+        // add content
+        addDocumentContent(prompt, content);
 
-    return prompt.toString();
+        return prompt.toString();
+      })
+      .block();
   }
 }

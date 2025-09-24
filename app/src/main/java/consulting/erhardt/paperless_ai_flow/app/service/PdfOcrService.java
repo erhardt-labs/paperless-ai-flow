@@ -4,6 +4,7 @@ import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration.Pip
 import consulting.erhardt.paperless_ai_flow.app.ocr.OcrClient;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.DocumentService;
+import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import reactor.core.publisher.Mono;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.stream.IntStream;
 
 /**
@@ -37,16 +39,20 @@ public class PdfOcrService {
    * @param pipelineDefinition the pipeline configuration
    * @return combined markdown text from all pages
    */
-  public Mono<String> processDocument(Document document, PipelineDefinition pipelineDefinition) {
+  public Mono<String> processDocument(Document document, PipelineDefinition pipelineDefinition) throws IOException {
     var documentId = document.getId();
     var ocrConfig = pipelineDefinition.getOcr();
+    var prompt = Objects.requireNonNullElse(
+      ocrConfig.getPrompt(),
+      FileUtils.readFileFromResources("prompts/ocr.md")
+    );
 
     log.info("Processing document {} with OCR model: {}", documentId, ocrConfig.getModel());
 
     return documentService.downloadById(document.getId())
       .flatMapMany(pdfBytes -> convertPdfToImages(pdfBytes, documentId))
       .collectList()
-      .flatMap(images -> processImagesWithOcr(Flux.fromIterable(images), ocrConfig.getModel(), ocrConfig.getPrompt()))
+      .flatMap(images -> processImagesWithOcr(Flux.fromIterable(images), ocrConfig.getModel(), prompt))
       .doOnSuccess(result -> log.info("Successfully processed document {} - result length: {}",
         documentId, result.length()))
       .doOnError(error -> log.error("Failed to process document {}: {}",

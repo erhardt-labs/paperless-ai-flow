@@ -6,13 +6,14 @@ import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.Corres
 import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.stereotype.Service;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 
 @Service
 public class CorrespondentExtractionModel extends AbstractAiModel<CorrespondentDto> {
 
-  private final CorrespondentService correspondentService;
+  private final CorrespondentService service;
 
   public CorrespondentExtractionModel(
     OpenAiChatModel openAiChatModel,
@@ -21,7 +22,7 @@ public class CorrespondentExtractionModel extends AbstractAiModel<CorrespondentD
   ) {
     super(openAiChatModel, objectMapper);
 
-    this.correspondentService = correspondentService;
+    this.service = correspondentService;
   }
 
   @Override
@@ -31,7 +32,7 @@ public class CorrespondentExtractionModel extends AbstractAiModel<CorrespondentD
 
   @Override
   protected String getJsonSchema() throws IOException {
-    return FileUtils.readFileFromResources("schemas/correspondent.md");
+    return FileUtils.readFileFromResources("schemas/correspondent.json");
   }
 
   @Override
@@ -46,26 +47,30 @@ public class CorrespondentExtractionModel extends AbstractAiModel<CorrespondentD
 
   @Override
   protected String getUserPrompt(String content) {
-    var available = correspondentService.getAll().block();
-    var prompt = new StringBuilder();
+    return service.getAll()
+      .subscribeOn(Schedulers.boundedElastic())
+      .map(available -> {
+        var prompt = new StringBuilder();
 
-    // add correspondents
-    prompt.append("### Available correspondents:\n");
-    for (var correspondent : available) {
-      prompt
-        .append("- ID: ")
-        .append(correspondent.getId())
-        .append(", Name: ")
-        .append("\"")
-        .append(correspondent.getName())
-        .append("\"")
-        .append("\n");
-    }
-    prompt.append("\n");
+        // add correspondents
+        prompt.append("### Available correspondents:\n");
+        for (var correspondent : available) {
+          prompt
+            .append("- ID: ")
+            .append(correspondent.getId())
+            .append(", Name: ")
+            .append("\"")
+            .append(correspondent.getName())
+            .append("\"")
+            .append("\n");
+        }
+        prompt.append("\n");
 
-    // add content
-    addDocumentContent(prompt, content);
+        // add content
+        addDocumentContent(prompt, content);
 
-    return prompt.toString();
+        return prompt.toString();
+      })
+      .block();
   }
 }

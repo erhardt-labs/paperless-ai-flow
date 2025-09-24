@@ -1,10 +1,11 @@
 package consulting.erhardt.paperless_ai_flow.app.service;
 
-import consulting.erhardt.paperless_ai_flow.app.ai.dtos.DocumentMetadataDto;
+import consulting.erhardt.paperless_ai_flow.app.ai.dtos.*;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.CorrespondentExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.CustomFieldExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.TagExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.TitleExtractionModel;
+import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
@@ -16,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Service for extracting document metadata using parallel AI processing
@@ -40,105 +43,121 @@ public class DocumentMetadataExtractionService {
   /**
    * Extract metadata from document content using parallel AI processing
    */
-  public Mono<DocumentMetadataDto> extractMetadata(@NonNull String content) {
+  public Mono<DocumentMetadataDto> extractMetadata(@NonNull PipelineConfiguration.PipelineDefinition pipeline, @NonNull String content) {
+    var extraction = pipeline.getExtraction();
     log.info("Starting parallel metadata extraction for document content (length: {})", content.length());
 
-    // Fetch available options from Paperless API in parallel
-    var tagsMono = tagService.getAll();
-    var correspondentsMono = correspondentService.getAll();
-    var customFieldsMono = customFieldsService.getAll();
+    // Run AI extractions in parallel when enabled
+    var titleMono = extraction.isTitle() ?
+      extractTitle(content) : Mono.just(Optional.empty());
+    var tagsMono = extraction.isTags() ?
+      extractTags(content) : Mono.just(Optional.empty());
+    var correspondentMono = extraction.isCorrespondent() ?
+      extractCorrespondent(content) : Mono.just(Optional.empty());
+    var customFieldsMono = extraction.isCustomFields() ?
+      extractCustomFields(content) : Mono.just(Optional.empty());
 
-    return Mono.zip(tagsMono, correspondentsMono, customFieldsMono)
-      .flatMap(tuple -> {
-        var availableTags = tuple.getT1();
-        var availableCorrespondents = tuple.getT2();
-        var availableCustomFields = tuple.getT3();
+    return Mono.zip(titleMono, tagsMono, correspondentMono, customFieldsMono)
+      .map(results -> {
+        var title = results.getT1();
+        var tagIds = results.getT2();
+        var correspondentId = results.getT3();
+        var customFields = results.getT4();
 
-        log.debug("Fetched available options - Tags: {}, Correspondents: {}, Custom fields: {}",
-          availableTags.size(), availableCorrespondents.size(), availableCustomFields.size());
+        // create metadata object
+        var metadataBuilder = DocumentMetadataDto.builder();
 
-        // Run AI extractions in parallel
-        var titleMono = extractTitle(content);
-        var tagsMono2 = extractTags(content, availableTags);
-        var correspondentMono = extractCorrespondent(content, availableCorrespondents);
-        var customFieldsMono2 = extractCustomFields(content, availableCustomFields);
+        // title
+        title.ifPresent(t -> metadataBuilder.title((
+          (TitleDto) t).getTitle()
+        ));
 
-        return Mono.zip(titleMono, tagsMono2, correspondentMono, customFieldsMono2)
-          .map(results -> {
-            var title = results.getT1();
-            var tagIds = results.getT2();
-            var correspondentId = results.getT3();
-            var customFields = results.getT4();
+        // correspondent
+        correspondentId.ifPresent(t -> metadataBuilder.correspondentId((
+          (CorrespondentDto) t).getCorrespondentId()
+        ));
 
-            // Convert sentinel value back to null
-            var actualCorrespondentId = correspondentId != null && correspondentId == -1L ? null : correspondentId;
+        // tagsIds
+        tagIds.ifPresent(t -> metadataBuilder.tagIds((
+          (TagsDto) t).getTagIds()
+        ));
 
-            log.info("Metadata extraction completed - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
-              title, tagIds.size(), actualCorrespondentId, customFields.size());
+        // custom fields
+        customFields.ifPresent(t -> metadataBuilder.customFields((
+          (CustomFieldsDto) t).getCustomFields()
+        ));
 
-            return DocumentMetadataDto.builder()
-              .title(title)
-              .tagIds(tagIds)
-              .correspondentId(actualCorrespondentId)
-              .customFields(customFields)
-              .build();
-          });
+        // build
+        var metadata = metadataBuilder.build();
+
+        log.info("Metadata extraction completed - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
+          metadata.getTitle(), metadata.getTagIds(), metadata.getCorrespondentId(), metadata.getCustomFields());
+
+        return metadata;
       });
   }
 
-  private Mono<String> extractTitle(String content) {
-    return Mono.fromCallable(() -> titleModel.process(content))
+  private Mono<Optional<TitleDto>> extractTitle(@NonNull String content) {
+    return Mono.fromCallable(() -> {
+        var result = titleModel.process(content);
+
+        return Optional.ofNullable(result);
+      })
+      .subscribeOn(Schedulers.boundedElastic())
       .doOnSubscribe(sub -> log.debug("Starting title extraction"))
-      .doOnNext(title -> log.debug("Title extracted: '{}'", title))
+      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Title extracted: '{}'", t)))
       .onErrorResume(error -> {
         log.error("Title extraction failed: {}", error.getMessage(), error);
-        return Mono.just("Document Title"); // Fallback
+
+        return Mono.just(Optional.empty());
       });
   }
 
-  private Mono<List<Long>> extractTags(String content, List<Tag> availableTags) {
-    if (availableTags.isEmpty()) {
-      log.warn("No tags available for extraction");
-      return Mono.just(List.of());
-    }
+  private Mono<Optional<TagsDto>> extractTags(@NonNull String content) {
+    return Mono.fromCallable(() -> {
+        var result = tagModel.process(content);
 
-    return Mono.fromCallable(() -> tagModel.process(content, availableTags))
-      .doOnSubscribe(sub -> log.debug("Starting tag extraction with {} available tags", availableTags.size()))
-      .doOnNext(tagIds -> log.debug("Tags extracted: {} IDs", tagIds.size()))
+        return Optional.ofNullable(result);
+      })
+      .subscribeOn(Schedulers.boundedElastic())
+      .doOnSubscribe(sub -> log.debug("Starting tags extraction"))
+      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Tags extracted: '{}'", t)))
       .onErrorResume(error -> {
-        log.error("Tag extraction failed: {}", error.getMessage(), error);
-        return Mono.just(List.of()); // Fallback to empty list
+        log.error("Tags extraction failed: {}", error.getMessage(), error);
+
+        return Mono.just(Optional.empty());
       });
   }
 
-  private Mono<Long> extractCorrespondent(String content, List<Correspondent> availableCorrespondents) {
-    if (availableCorrespondents.isEmpty()) {
-      log.warn("No correspondents available for extraction");
-      return Mono.just(-1L); // Sentinel value for no correspondent
-    }
+  private Mono<Optional<CorrespondentDto>> extractCorrespondent(@NonNull String content) {
+    return Mono.fromCallable(() -> {
+        var result = correspondentModel.process(content);
 
-    return Mono.fromCallable(() -> correspondentModel.process(content, availableCorrespondents))
-      .map(id -> id != null ? id : -1L) // Convert null to sentinel value
-      .doOnSubscribe(sub -> log.debug("Starting correspondent extraction with {} available correspondents", availableCorrespondents.size()))
-      .doOnNext(correspondentId -> log.debug("Correspondent extracted: {}", correspondentId))
+        return Optional.ofNullable(result);
+      })
+      .subscribeOn(Schedulers.boundedElastic())
+      .doOnSubscribe(sub -> log.debug("Starting correspondent extraction"))
+      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Correspondent extracted: '{}'", t)))
       .onErrorResume(error -> {
         log.error("Correspondent extraction failed: {}", error.getMessage(), error);
-        return Mono.just(-1L); // Fallback to sentinel value
+
+        return Mono.just(Optional.empty());
       });
   }
 
-  private Mono<java.util.Map<Long, String>> extractCustomFields(String content, List<CustomField> availableCustomFields) {
-    if (availableCustomFields.isEmpty()) {
-      log.warn("No custom fields available for extraction");
-      return Mono.just(new HashMap<>());
-    }
+  private Mono<Optional<CustomFieldsDto>> extractCustomFields(@NonNull String content) {
+    return Mono.fromCallable(() -> {
+        var result = customFieldModel.process(content);
 
-    return Mono.fromCallable(() -> customFieldModel.process(content, availableCustomFields))
-      .doOnSubscribe(sub -> log.debug("Starting custom field extraction with {} available fields", availableCustomFields.size()))
-      .doOnNext(customFields -> log.debug("Custom fields extracted: {} fields", customFields.size()))
+        return Optional.ofNullable(result);
+      })
+      .subscribeOn(Schedulers.boundedElastic())
+      .doOnSubscribe(sub -> log.debug("Starting custom fields extraction"))
+      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Custom fields extracted: '{}'", t)))
       .onErrorResume(error -> {
-        log.error("Custom field extraction failed: {}", error.getMessage(), error);
-        return Mono.just(new HashMap<>()); // Fallback to empty map
+        log.error("Custom fields extraction failed: {}", error.getMessage(), error);
+
+        return Mono.just(Optional.empty());
       });
   }
 }

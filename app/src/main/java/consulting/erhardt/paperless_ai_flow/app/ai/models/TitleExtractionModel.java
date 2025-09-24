@@ -20,12 +20,12 @@ public class TitleExtractionModel extends AbstractAiModel<TitleDto> {
 
   @Override
   protected String getSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/tags.md");
+    return FileUtils.readFileFromResources("prompts/title.md");
   }
 
   @Override
   protected String getJsonSchema() throws IOException {
-    return FileUtils.readFileFromResources("schemas/tags.md");
+    return FileUtils.readFileFromResources("schemas/title.json");
   }
 
   @Override

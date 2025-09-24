@@ -6,18 +6,28 @@ import lombok.Value;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Builder
 @Value
 public class DocumentMetadataDto {
-  @NonNull
   String title;
 
   @NonNull
-  List<Long> tagIds;
+  @Builder.Default
+  List<Integer> tagIds = List.of();
 
-  Long correspondentId;
+  Integer correspondentId;
 
   @NonNull
-  Map<Long, String> customFields;
+  @Builder.Default
+  Map<Integer, String> customFields = Map.of();
+
+  public @NonNull Optional<String> getTitle() {
+    return Optional.ofNullable(title);
+  }
+
+  public @NonNull Optional<Integer> getCorrespondentId() {
+    return Optional.ofNullable(correspondentId);
+  }
 }

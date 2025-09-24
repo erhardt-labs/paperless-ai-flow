@@ -145,6 +145,7 @@ public class DocumentPollingIntegrationConfig {
   @ServiceActivator(inputChannel = "ocrResultChannel", outputChannel = "metadataResultChannel")
   public Message<DocumentMetadataDto> processMetadataExtraction(Message<String> message) {
     var ocrResult = message.getPayload();
+    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
     var pipelineName = (String) message.getHeaders().get("pipelineName");
     var originalDocument = (Document) message.getHeaders().get("originalDocument");
 
@@ -153,7 +154,7 @@ public class DocumentPollingIntegrationConfig {
 
     try {
       // Process the OCR result through metadata extraction
-      var metadataResult = metadataExtractionService.extractMetadata(ocrResult).block();
+      var metadataResult = metadataExtractionService.extractMetadata(pipeline, ocrResult).block();
 
       log.info("Metadata extraction completed for document {} from pipeline '{}' - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
         originalDocument.getId(), pipelineName, metadataResult.getTitle(),

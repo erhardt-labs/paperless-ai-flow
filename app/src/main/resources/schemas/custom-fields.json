@@ -2,13 +2,23 @@
   "type": "object",
   "properties": {
     "customFields": {
-      "type": "object",
-      "patternProperties": {
-        "^[0-9]+$": {
-          "type": "string"
-        }
-      },
-      "description": "Map of custom field IDs (as strings) to their extracted values."
+      "type": "array",
+      "description": "Array of key-value pairs representing the custom fields.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "number",
+            "description": "The ID of the custom field."
+          },
+          "value": {
+            "type": "string",
+            "description": "The value of the custom field."
+          }
+        },
+        "required": ["key", "value"],
+        "additionalProperties": false
+      }
     }
   },
   "required": ["customFields"],
