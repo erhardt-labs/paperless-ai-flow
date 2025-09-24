@@ -1,0 +1,10 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'github>erhardtconsulting/renovate-rules:default',
+  ],
+  ignoreDeps: [
+    'consulting.erhardt.paperless-ai-flow:parent',
+    'consulting.erhardt.paperless-ai-flow:paperless-ngx-client'
+  ]
+}
