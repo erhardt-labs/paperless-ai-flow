@@ -1,6 +1,6 @@
 package consulting.erhardt.paperless_ai_flow.app.service;
 
-import consulting.erhardt.paperless_ai_flow.app.ai.dtos.*;
+import consulting.erhardt.paperless_ai_flow.app.ai.dtos.TitleDto;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.CorrespondentExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.CustomFieldExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.ai.models.TagExtractionModel;
@@ -8,6 +8,7 @@ import consulting.erhardt.paperless_ai_flow.app.ai.models.TitleExtractionModel;
 import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.CorrespondentService;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.CustomFieldsService;
@@ -16,11 +17,12 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -43,8 +45,12 @@ public class DocumentMetadataExtractionService {
   /**
    * Extract metadata from document content using parallel AI processing
    */
-  public Mono<DocumentMetadataDto> extractMetadata(@NonNull PipelineConfiguration.PipelineDefinition pipeline, @NonNull String content) {
+  public Mono<Document> extractMetadata(
+    @NonNull PipelineConfiguration.PipelineDefinition pipeline,
+    @NonNull Document document
+  ) {
     var extraction = pipeline.getExtraction();
+    var content = document.getContent();
     log.info("Starting parallel metadata extraction for document content (length: {})", content.length());
 
     // Run AI extractions in parallel when enabled
@@ -59,105 +65,127 @@ public class DocumentMetadataExtractionService {
 
     return Mono.zip(titleMono, tagsMono, correspondentMono, customFieldsMono)
       .map(results -> {
-        var title = results.getT1();
-        var tagIds = results.getT2();
-        var correspondentId = results.getT3();
-        var customFields = results.getT4();
+        var title = (Optional<String>) results.getT1();
+        var tagsOpt = (Optional<List<Tag>>) results.getT2();
+        var correspondentOpt = (Optional<Correspondent>) results.getT3();
+        var customFieldsOpt = (Optional<List<CustomField>>) results.getT4();
 
-        // create metadata object
-        var metadataBuilder = DocumentMetadataDto.builder();
-
-        // title
-        title.ifPresent(t -> metadataBuilder.title((
-          (TitleDto) t).getTitle()
-        ));
-
-        // correspondent
-        correspondentId.ifPresent(t -> metadataBuilder.correspondentId((
-          (CorrespondentDto) t).getCorrespondentId()
-        ));
-
-        // tagsIds
-        tagIds.ifPresent(t -> metadataBuilder.tagIds((
-          (TagsDto) t).getTagIds()
-        ));
-
-        // custom fields
-        customFields.ifPresent(t -> metadataBuilder.customFields((
-          (CustomFieldsDto) t).getCustomFields()
-        ));
+        // create builder object
+        var documentBuilder = document.toBuilder();
+        title.ifPresent(documentBuilder::title);
+        correspondentOpt.ifPresent(documentBuilder::correspondent);
+        tagsOpt.ifPresent(documentBuilder::tags);
+        customFieldsOpt.ifPresent(documentBuilder::customFields);
 
         // build
-        var metadata = metadataBuilder.build();
-
+        var updatedDocument = documentBuilder.build();
         log.info("Metadata extraction completed - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
-          metadata.getTitle(), metadata.getTagIds(), metadata.getCorrespondentId(), metadata.getCustomFields());
+          updatedDocument.getTitle(), updatedDocument.getTags(), updatedDocument.getCorrespondent(), updatedDocument.getCustomFields());
 
-        return metadata;
+        return updatedDocument;
       });
   }
 
-  private Mono<Optional<TitleDto>> extractTitle(@NonNull String content) {
+  private Mono<Optional<String>> extractTitle(@NonNull String content) {
     return Mono.fromCallable(() -> {
         var result = titleModel.process(content);
-
-        return Optional.ofNullable(result);
+        return Optional.ofNullable(result)
+          .map(TitleDto::getTitle);
       })
       .subscribeOn(Schedulers.boundedElastic())
       .doOnSubscribe(sub -> log.debug("Starting title extraction"))
       .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Title extracted: '{}'", t)))
       .onErrorResume(error -> {
         log.error("Title extraction failed: {}", error.getMessage(), error);
-
         return Mono.just(Optional.empty());
-      });
+      })
+      .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<TagsDto>> extractTags(@NonNull String content) {
-    return Mono.fromCallable(() -> {
-        var result = tagModel.process(content);
-
-        return Optional.ofNullable(result);
-      })
+  private Mono<Optional<List<Tag>>> extractTags(@NonNull String content) {
+    return Mono.fromCallable(() -> Optional.ofNullable(tagModel.process(content))) // may be null
       .subscribeOn(Schedulers.boundedElastic())
-      .doOnSubscribe(sub -> log.debug("Starting tags extraction"))
-      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Tags extracted: '{}'", t)))
-      .onErrorResume(error -> {
-        log.error("Tags extraction failed: {}", error.getMessage(), error);
+      .doOnSubscribe(s -> log.debug("Starting tags extraction"))
+      .flatMap(optDto -> optDto
+        .map(dto -> {
+          var ids = dto.getTagIds();
 
-        return Mono.just(Optional.empty());
-      });
+          return Flux.fromIterable(ids)
+            .flatMapSequential(id ->
+                tagService.getById(id)
+                  .doOnNext(tag -> log.debug("Resolved tag id {} -> {}", id, tag))
+                  .doOnError(e -> log.error("Failed to resolve tag id {}: {}", id, e.getMessage(), e))
+                  .onErrorResume(e -> Mono.empty()),
+              Math.min(Math.max(ids.size(), 1), 8)
+            )
+            .collectList()
+            .map(Optional::of)
+            .doOnNext(opt -> log.debug("Tags extracted (resolved): {}", opt))
+            .onErrorResume(e -> {
+              log.error("Tags resolution failed: {}", e.getMessage(), e);
+              return Mono.just(Optional.empty());
+            });
+        })
+        .orElse(Mono.just(Optional.empty()))
+      )
+      .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<CorrespondentDto>> extractCorrespondent(@NonNull String content) {
-    return Mono.fromCallable(() -> {
-        var result = correspondentModel.process(content);
-
-        return Optional.ofNullable(result);
-      })
+  private Mono<Optional<Correspondent>> extractCorrespondent(@NonNull String content) {
+    return Mono.fromCallable(() -> Optional.ofNullable(correspondentModel.process(content)))
       .subscribeOn(Schedulers.boundedElastic())
-      .doOnSubscribe(sub -> log.debug("Starting correspondent extraction"))
-      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Correspondent extracted: '{}'", t)))
-      .onErrorResume(error -> {
-        log.error("Correspondent extraction failed: {}", error.getMessage(), error);
+      .flatMap(opt -> opt
+        .map(dto -> correspondentService.getById(dto.getCorrespondentId())
+          .map(Optional::of)
+          .onErrorResume(e -> {
+            log.error("Correspondent getById failed: {}", e.getMessage(), e);
 
+            return Mono.just(Optional.empty());
+          })
+        )
+        .orElse(Mono.just(Optional.empty()))
+      )
+      .doOnSubscribe(s -> log.debug("Starting correspondent extraction"))
+      .onErrorResume(e -> {
+        log.error("Correspondent extraction failed: {}", e.getMessage(), e);
         return Mono.just(Optional.empty());
-      });
+      })
+      .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<CustomFieldsDto>> extractCustomFields(@NonNull String content) {
-    return Mono.fromCallable(() -> {
-        var result = customFieldModel.process(content);
-
-        return Optional.ofNullable(result);
-      })
+  private Mono<Optional<List<CustomField>>> extractCustomFields(@NonNull String content) {
+    return Mono.fromCallable(() -> Optional.ofNullable(customFieldModel.process(content))) // may be null
       .subscribeOn(Schedulers.boundedElastic())
-      .doOnSubscribe(sub -> log.debug("Starting custom fields extraction"))
-      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Custom fields extracted: '{}'", t)))
-      .onErrorResume(error -> {
-        log.error("Custom fields extraction failed: {}", error.getMessage(), error);
+      .doOnSubscribe(s -> log.debug("Starting custom fields extraction"))
+      .flatMap(optDto -> optDto
+        .map(dto -> {
+          var customFields = dto.getCustomFields();
 
-        return Mono.just(Optional.empty());
-      });
+          final List<Map.Entry<Integer, String>> entries = customFields.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .toList();
+
+          return Flux.fromIterable(entries)
+            .flatMapSequential(entry -> customFieldsService.getById(entry.getKey())
+                  .map(customField -> (CustomField) customField.toBuilder()
+                    .value(entry.getValue())
+                    .build()
+                  )
+                  .doOnNext(customField -> log.debug("Resolved custom field id {} -> {}", customField.getName(), customField.getValue()))
+                  .doOnError(e -> log.error("Failed to resolve custom field id {}: {}", entry.getKey(), e.getMessage(), e))
+                  .onErrorResume(e -> Mono.empty()),
+              Math.min(Math.max(entries.size(), 1), 8)
+            )
+            .collectList()
+            .map(Optional::of)
+            .doOnNext(opt -> log.debug("Custom fields extracted (resolved): {}", opt))
+            .onErrorResume(e -> {
+              log.error("Tags resolution failed: {}", e.getMessage(), e);
+              return Mono.just(Optional.empty());
+            });
+        })
+        .orElse(Mono.just(Optional.empty()))
+      )
+      .switchIfEmpty(Mono.just(Optional.empty()));
   }
 }

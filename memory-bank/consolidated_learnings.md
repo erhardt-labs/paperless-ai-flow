@@ -252,6 +252,88 @@ Prompt prompt = new Prompt(                     // Message composition
 - Parallel processing structure remains consistent regardless of enabled extractions
 - Configuration changes require no code modifications
 
+## Spring Integration & Message-Driven Architecture
+
+### Spring Integration Pipeline Pattern
+**Core Principle:** Use channel-based message flow for document processing orchestration with proper error isolation.
+
+**Architecture:**
+```java
+@Configuration
+@EnableIntegration
+@IntegrationComponentScan
+@EnableScheduling
+public class DocumentPollingIntegrationConfig {
+  
+  @Scheduled(fixedRate = 30000)           // Automated polling
+  @ServiceActivator(                      // Processing steps
+    inputChannel = "pollingChannel",
+    outputChannel = "metadataExtractChannel"
+  )
+}
+```
+
+**Channel Flow Design:**
+- **pollingChannel (QueueChannel):** Buffering for document intake with capacity management
+- **metadataExtractChannel (DirectChannel):** Immediate OCR processing without buffering
+- **metadataResultChannel (DirectChannel):** Immediate AI processing and final handling
+
+**Benefits:**
+- **Decoupling:** Each processing step is independent and testable
+- **Error isolation:** Failures in one document don't affect others in the pipeline
+- **Scalability:** Message channels provide natural backpressure handling
+- **Message context:** Pipeline headers maintain context across processing steps
+
+### Message Context Pattern
+**Pattern: Pipeline Context via Message Headers**
+- **Purpose:** Maintain processing context (pipeline definition, name) across integration steps
+- **Implementation:** MessageBuilder.withPayload().setHeader() for context propagation
+- **Error handling:** Return null from service activators to terminate message flow on errors
+- **Type safety:** Cast message headers to appropriate types (PipelineDefinition, String)
+
+**Rationale:** Enables stateless processing while maintaining necessary context for logging and configuration decisions.
+
+### Channel Type Selection Strategy
+**Pattern: QueueChannel for Buffering, DirectChannel for Processing**
+- **QueueChannel:** Use for intake channels where buffering and flow control needed (pollingChannel with 100 capacity)
+- **DirectChannel:** Use for immediate processing steps where instant handoff desired
+- **Configuration separation:** Dedicated ChannelConfig class for Spring Integration infrastructure
+
+**Benefits:** Optimized flow control based on processing characteristics and resource requirements.
+
+## Reactive Utility Patterns
+
+### PatchOps Conditional Operation Pattern
+**Core Principle:** Provide elegant reactive composition for conditional value application.
+
+**Implementation:**
+```java
+@UtilityClass
+public class PatchOps {
+  public <T, M> Mono<M> applyIfPresent(
+    @NonNull Mono<M> current,
+    @NonNull Mono<T> source,
+    @NonNull BiFunction<M, T, M> applier
+  ) {
+    return current.flatMap(cur -> source
+      .map(val -> applier.apply(cur, val))
+      .defaultIfEmpty(cur)
+    );
+  }
+}
+```
+
+**Benefits:**
+- **Type safety:** Generic types ensure compile-time correctness for conditional operations
+- **Readability:** More expressive than nested flatMap/map chains for conditional logic
+- **Reusability:** Common conditional reactive pattern extracted to utility class
+- **Null safety:** Lombok @NonNull ensures parameter validation at method boundaries
+
+**Usage Guidelines:**
+- Use for conditional document enrichment where source value may be Optional/empty
+- BiFunction pattern enables clean transformation of current value with source value
+- defaultIfEmpty ensures original value returned when source is empty
+
 ## Refactoring Strategies
 
 ### Reactive Migration Pattern

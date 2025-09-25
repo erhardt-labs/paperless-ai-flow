@@ -1,6 +1,6 @@
 # Progress: Paperless-AI Pipeline
 
-## Current Status: AI Metadata Extraction & Testing Complete - Production Ready
+## Current Status: Spring Integration Pipeline Complete - End-to-End Workflow Ready
 
 ### What Works ✅
 - **Complete Memory Bank System:** Comprehensive foundation and implementation documentation
@@ -38,6 +38,16 @@
   - **Resource-based prompt templates** in `src/main/resources/prompts/` for maintainable AI prompts
   - **Comprehensive error handling** with Optional-based graceful degradation when AI processing fails
   - **Configuration-driven processing** with extraction boolean flags for selective AI processing
+
+- **Complete Spring Integration Pipeline:** ✅ COMPLETE
+  - **DocumentPollingIntegrationConfig** with end-to-end workflow orchestration
+  - **@Scheduled polling** with 30-second intervals for enabled pipelines
+  - **@ServiceActivator pattern** for step-by-step document processing
+  - **Channel-based message flow:** pollingChannel → metadataExtractChannel → metadataResultChannel
+  - **QueueChannel vs DirectChannel** optimization for buffering vs immediate processing
+  - **Message headers** maintaining pipeline context (pipeline definition, name) across steps
+  - **Service activator error handling** with null return for natural flow termination
+  - **Complete workflow:** poll documents → OCR processing → AI metadata extraction → result handling
 
 - **Spring AI Integration:** ✅ COMPLETE
   - **OpenAiChatModel** integration with proper OpenAiChatOptions configuration

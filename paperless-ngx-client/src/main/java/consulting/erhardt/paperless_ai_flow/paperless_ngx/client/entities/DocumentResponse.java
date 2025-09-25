@@ -21,6 +21,9 @@ public class DocumentResponse {
   @JsonProperty("title")
   String title;
 
+  @JsonProperty("content")
+  String content;
+
   @JsonProperty("correspondent")
   Integer correspondentId;
 

@@ -6,11 +6,12 @@ import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
-@SuperBuilder
+@SuperBuilder(toBuilder = true)
 @Value
 @EqualsAndHashCode(callSuper = true)
 public class Document extends BaseEntity {
   String title;
+  String content;
   Correspondent correspondent;
   List<Tag> tags;
   List<CustomField> customFields;

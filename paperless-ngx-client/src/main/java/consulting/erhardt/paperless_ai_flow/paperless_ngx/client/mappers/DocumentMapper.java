@@ -16,6 +16,7 @@ import java.util.List;
 public interface DocumentMapper {
   @Mapping(target = "id", source = "response.id")
   @Mapping(target = "title", source = "response.title")
+  @Mapping(target = "content", source = "response.content")
   @Mapping(target = "correspondent", source = "correspondent")
   @Mapping(target = "customFields", source = "customFields")
   @Mapping(target = "tags", source = "tags")

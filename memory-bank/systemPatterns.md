@@ -203,6 +203,88 @@ Prompt prompt = new Prompt(               // Message composition
 - **Model flexibility:** Easy switching between OpenAI models
 - **Future extensibility:** Spring AI abstracts provider-specific details
 
+### Spring Integration Pipeline Pattern (NEW)
+**Purpose:** Orchestrate document processing workflow using message-driven architecture
+
+**Core Architecture:**
+```java
+@Configuration
+@EnableIntegration
+@IntegrationComponentScan
+@EnableScheduling
+public class DocumentPollingIntegrationConfig {
+  
+  @Scheduled(fixedRate = 30000)           // Automated polling
+  public void pollDocuments() { ... }
+  
+  @ServiceActivator(                      // Processing steps
+    inputChannel = "pollingChannel",
+    outputChannel = "metadataExtractChannel"
+  )
+  public Message<Document> processStep(Message<Document> message) { ... }
+}
+```
+
+**Channel Architecture:**
+```
+pollingChannel (QueueChannel)          // Buffering for document intake
+    ↓
+metadataExtractChannel (DirectChannel) // Immediate OCR processing
+    ↓  
+metadataResultChannel (DirectChannel)  // Immediate AI processing
+    ↓
+Final result handling
+```
+
+**Key Components:**
+- **@Scheduled polling:** Automated document discovery with configurable intervals
+- **@ServiceActivator pattern:** Step-by-step processing with clear input/output channels
+- **Message headers:** Pipeline context preservation across processing steps
+- **Channel types:** QueueChannel for buffering, DirectChannel for immediate processing
+- **Error handling:** Return null to terminate message flow on processing failures
+
+**Benefits:**
+- **Decoupling:** Each processing step is independent and testable
+- **Error isolation:** Failures in one document don't affect others
+- **Scalability:** Message channels provide natural backpressure handling
+- **Observability:** Message flow enables comprehensive logging and monitoring
+
+### Reactive Utility Patterns (NEW)
+**Purpose:** Provide reusable reactive composition utilities for conditional operations
+
+**PatchOps Pattern:**
+```java
+@UtilityClass
+public class PatchOps {
+  public <T, M> Mono<M> applyIfPresent(
+    @NonNull Mono<M> current,
+    @NonNull Mono<T> source, 
+    @NonNull BiFunction<M, T, M> applier
+  ) {
+    return current.flatMap(cur -> source
+      .map(val -> applier.apply(cur, val))
+      .defaultIfEmpty(cur)
+    );
+  }
+}
+```
+
+**Usage Example:**
+```java
+// Apply metadata extraction results conditionally
+return PatchOps.applyIfPresent(
+  Mono.just(document),
+  extractedMetadata,
+  (doc, metadata) -> doc.toBuilder().title(metadata.getTitle()).build()
+);
+```
+
+**Benefits:**
+- **Conditional operations:** Clean reactive composition for optional value application
+- **Type safety:** Generic types ensure compile-time correctness
+- **Reusability:** Common pattern extracted to utility class
+- **Readability:** More expressive than nested flatMap/map chains
+
 ### Reactive Programming Pattern
 **Purpose:** Provide consistent, non-blocking I/O throughout the entire application stack using Project Reactor
 
