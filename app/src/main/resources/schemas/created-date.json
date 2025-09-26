@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "created_date": {
+      "type": "string",
+      "description": "The date the document was created or issued in YYYY-MM-DD format. Or null, when no relevant date has been found."
+    }
+  },
+  "required": ["created_date"],
+  "additionalProperties": false
+}

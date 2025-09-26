@@ -20,9 +20,9 @@ public abstract class AbstractAiModel<T> {
   protected final OpenAiChatModel openAiChatModel;
   protected final ObjectMapper objectMapper;
 
-  public T process(@NonNull String content) throws IOException {
+  public T process(@NonNull String content, String systemPrompt) throws IOException {
     // prepare prompts
-    var systemMessage = new SystemMessage(getSystemPrompt());
+    var systemMessage = new SystemMessage((systemPrompt != null) ? systemPrompt : getDefaultSystemPrompt());
     var userPrompt = getUserPrompt(content);
     var userMessage = new UserMessage(userPrompt);
 
@@ -33,7 +33,7 @@ public abstract class AbstractAiModel<T> {
     return objectMapper.readValue(response.getResult().getOutput().getText(), getResponseClass());
   }
 
-  protected abstract String getSystemPrompt() throws IOException;
+  protected abstract String getDefaultSystemPrompt() throws IOException;
 
   protected abstract String getJsonSchema() throws IOException;
 

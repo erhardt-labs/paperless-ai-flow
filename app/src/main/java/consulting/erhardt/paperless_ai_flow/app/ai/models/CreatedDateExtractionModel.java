@@ -1,6 +1,7 @@
 package consulting.erhardt.paperless_ai_flow.app.ai.models;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import consulting.erhardt.paperless_ai_flow.app.ai.dtos.CreatedDateDto;
 import consulting.erhardt.paperless_ai_flow.app.ai.dtos.TitleDto;
 import consulting.erhardt.paperless_ai_flow.utils.FileUtils;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -9,9 +10,9 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 
 @Service
-public class TitleExtractionModel extends AbstractAiModel<TitleDto> {
+public class CreatedDateExtractionModel extends AbstractAiModel<CreatedDateDto> {
 
-  public TitleExtractionModel(
+  public CreatedDateExtractionModel(
     OpenAiChatModel openAiChatModel,
     ObjectMapper objectMapper
   ) {
@@ -20,12 +21,12 @@ public class TitleExtractionModel extends AbstractAiModel<TitleDto> {
 
   @Override
   protected String getDefaultSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/title.md");
+    return FileUtils.readFileFromResources("prompts/created-date.md");
   }
 
   @Override
   protected String getJsonSchema() throws IOException {
-    return FileUtils.readFileFromResources("schemas/title.json");
+    return FileUtils.readFileFromResources("schemas/created-date.json");
   }
 
   @Override
@@ -34,8 +35,8 @@ public class TitleExtractionModel extends AbstractAiModel<TitleDto> {
   }
 
   @Override
-  protected Class<TitleDto> getResponseClass() {
-    return TitleDto.class;
+  protected Class<CreatedDateDto> getResponseClass() {
+    return CreatedDateDto.class;
   }
 
   @Override

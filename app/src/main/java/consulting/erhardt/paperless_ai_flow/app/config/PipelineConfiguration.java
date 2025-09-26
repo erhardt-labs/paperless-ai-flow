@@ -53,12 +53,17 @@ public class PipelineConfiguration {
     @Builder.Default
     ExtractionConfiguration extraction = ExtractionConfiguration.builder().build();
 
+    @NonNull
+    @Builder.Default
+    List<PatchConfiguration> patches = List.of();
+
     public PipelineDefinition(
       @NonNull String name,
       @NonNull SelectorConfiguration selector,
       PollingConfiguration polling,
       OcrConfiguration ocr,
-      ExtractionConfiguration extraction
+      ExtractionConfiguration extraction,
+      List<PatchConfiguration> patches
     ) {
       this.name = name;
       this.selector = selector;
@@ -68,6 +73,7 @@ public class PipelineConfiguration {
         .build();
       this.ocr = (ocr != null) ? ocr : OcrConfiguration.builder().build();
       this.extraction = (extraction != null) ? extraction : ExtractionConfiguration.builder().build();
+      this.patches = (patches != null) ? patches : List.of();
     }
   }
 
@@ -105,14 +111,49 @@ public class PipelineConfiguration {
   public static class ExtractionConfiguration {
     @Builder.Default
     boolean title = true;
+    String titlePrompt;
+
+    @Builder.Default
+    boolean createdDate = true;
+    String createdDatePrompt;
 
     @Builder.Default
     boolean correspondent = true;
+    String correspondentPrompt;
 
     @Builder.Default
     boolean tags = true;
+    String tagsPrompt;
 
     @Builder.Default
     boolean customFields = true;
+    String customFieldsPrompt;
+  }
+
+  @Value
+  @Builder
+  public static class PatchConfiguration {
+    @NonNull
+    PatchAction action;
+
+    @NonNull
+    PatchType type;
+
+    @NonNull
+    String name;
+
+    String value;
+  }
+
+  public enum PatchAction {
+    ADD,
+    DROP,
+    SET
+  }
+
+  public enum PatchType {
+    TAG,
+    CORRESPONDENT,
+    CUSTOM_FIELD
   }
 }

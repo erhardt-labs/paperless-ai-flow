@@ -32,7 +32,7 @@
 
 - **Complete AI Metadata Extraction Framework:** ✅ COMPLETE
   - **AbstractAiModel<T>** template method pattern for consistent AI processing across all extraction types
-  - **Four specialized extraction models:** TitleExtractionModel, TagExtractionModel, CorrespondentExtractionModel, CustomFieldExtractionModel
+  - **Five specialized extraction models:** TitleExtractionModel, TagExtractionModel, CorrespondentExtractionModel, CustomFieldExtractionModel, CreatedDateExtractionModel
   - **DocumentMetadataExtractionService** with parallel processing using Mono.zip() for optimal performance
   - **JSON Schema-driven structured output** from OpenAI with ResponseFormat.Type.JSON_SCHEMA
   - **Resource-based prompt templates** in `src/main/resources/prompts/` for maintainable AI prompts
@@ -57,8 +57,8 @@
   - **Model selection** configurable per extraction type (e.g., "openai/o4-mini")
 
 - **Comprehensive Unit Testing Framework:** ✅ COMPLETE
-  - **26 passing tests** covering all critical functionality
-  - **getUserPrompt method tests** for all 4 extraction models with proper service mocking
+  - **29 passing tests** covering all critical functionality
+  - **getUserPrompt method tests** for all 5 extraction models with proper service mocking
   - **JSON Schema compatibility tests** with TitleDto demonstrating DTO-schema alignment
   - **Configuration testing** with proper default prompt handling separation
   - **Reactive service mocking patterns** using `Mono<List<T>>` for AbstractReactivePagedService

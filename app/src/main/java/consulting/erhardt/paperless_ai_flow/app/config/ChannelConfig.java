@@ -35,4 +35,11 @@ public class ChannelConfig {
     channel.setComponentName("metadataResultChannel");
     return channel;
   }
+
+  @Bean
+  public MessageChannel finishedDocumentChannel() {
+    var channel = new DirectChannel();
+    channel.setComponentName("finishedDocumentChannel");
+    return channel;
+  }
 }

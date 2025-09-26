@@ -1,9 +1,7 @@
 package consulting.erhardt.paperless_ai_flow.app.integration;
 
 import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
-import consulting.erhardt.paperless_ai_flow.app.service.DocumentMetadataExtractionService;
-import consulting.erhardt.paperless_ai_flow.app.service.DocumentPollingService;
-import consulting.erhardt.paperless_ai_flow.app.service.PdfOcrService;
+import consulting.erhardt.paperless_ai_flow.app.service.*;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +32,10 @@ public class DocumentPollingIntegrationConfig {
   private final DocumentPollingService pollingService;
   private final PdfOcrService pdfOcrService;
   private final DocumentMetadataExtractionService metadataExtractionService;
+  private final DocumentFieldPatchingService documentFieldPatchingService;
+
+  @Qualifier("documentLockRegistry")
+  private final IdLockRegistryService<Integer> documentLockRegistry;
 
   @Qualifier("pollingChannel")
   private final MessageChannel pollingChannel;
@@ -55,6 +57,13 @@ public class DocumentPollingIntegrationConfig {
 
           // Send each document to the pollingChannel with pipeline context
           for (var document : documents) {
+            var id = document.getId();
+
+            if (!documentLockRegistry.tryLock(id)) {
+              log.debug("Skip document {} (title: '{}') - lock already held", id, document.getTitle());
+              continue;
+            }
+
             var message = MessageBuilder
               .withPayload(document)
               .setHeader("pipeline", pipeline)
@@ -89,26 +98,29 @@ public class DocumentPollingIntegrationConfig {
       // Process the document through OCR
       var ocrResult = pdfOcrService.processDocument(document, pipeline).block();
 
-      log.info("OCR completed for document {} from pipeline '{}', result length: {}",
-        document.getId(), pipelineName, ocrResult.length());
+      if(ocrResult != null) {
+        log.info("OCR completed for document {} from pipeline '{}', result length: {}",
+          document.getId(), pipelineName, ocrResult.length());
 
-      // update document
-      var updatedDocument = document.toBuilder()
-        .content(ocrResult)
-        .build();
+        // update document
+        var updatedDocument = document.toBuilder()
+          .content(ocrResult)
+          .build();
 
-      // Create result message with original headers plus OCR result
-      return MessageBuilder
-        .withPayload(updatedDocument)
-        .copyHeaders(message.getHeaders())
-        .build();
+        // Create result message with original headers plus OCR result
+        return MessageBuilder
+          .withPayload(updatedDocument)
+          .copyHeaders(message.getHeaders())
+          .build();
+      } else {
+        log.error("Error when doing OCR of document '{}' from pipeline '{}'", document.getId(), pipelineName);
+      }
     } catch (Exception e) {
-      log.error("Error processing OCR for document {} from pipeline '{}': {}",
-        document.getId(), pipelineName, e.getMessage(), e);
-
-      // Stop execution
-      return null;
+      log.error("Error processing OCR for document {} from pipeline '{}': {}", document.getId(), pipelineName, e.getMessage(), e);
     }
+
+    unlockDocument(message);
+    return null;
   }
 
   /**
@@ -133,21 +145,67 @@ public class DocumentPollingIntegrationConfig {
           .withPayload(processedDocument)
           .copyHeaders(message.getHeaders())
           .build();
+      } else {
+        log.error("Error when processing metadata of document '{}' from pipeline '{}'", document.getId(), pipelineName);
       }
     } catch (Exception e) {
       log.error("Error processing metadata extraction for document {} from pipeline '{}': {}",
         document.getId(), pipelineName, e.getMessage(), e);
     }
 
+    unlockDocument(message);
     return null;
   }
 
-  /**
-   * Final result handler - processes metadata extraction results
-   */
-  @ServiceActivator(inputChannel = "metadataResultChannel")
-  public void handleMetadataResult(Message<Document> message) {
+  @ServiceActivator(inputChannel = "metadataResultChannel", outputChannel = "finishedDocumentChannel")
+  public Message<Document> processPatching(Message<Document> message) {
     var document = message.getPayload();
+    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
     var pipelineName = (String) message.getHeaders().get("pipelineName");
+    var patches =  pipeline.getPatches();
+
+    log.info("Starting field patching for document {} from pipeline '{}'", document.getId(), pipelineName);
+
+    if(patches.isEmpty()) {
+      log.info("Nothing to patch for document {} from pipeline '{}'", document.getId(), pipelineName);
+
+      return MessageBuilder
+        .withPayload(document)
+        .copyHeaders(message.getHeaders())
+        .build();
+    } else {
+      try {
+        var patchedDocument = documentFieldPatchingService.applyPatches(document, pipeline.getPatches()).block();
+
+        if(patchedDocument != null) {
+          return MessageBuilder
+            .withPayload(patchedDocument)
+            .copyHeaders(message.getHeaders())
+            .build();
+        } else {
+          log.error("Error when patching fields of document '{}' from pipeline '{}'", document.getId(), pipelineName);
+        }
+      } catch (Exception e) {
+        log.error("Error processing field patches for document {} from pipeline '{}': {}", document.getId(), pipelineName, e.getMessage(), e);
+      }
+    }
+
+    unlockDocument(message);
+    return null;
+  }
+
+  @ServiceActivator(inputChannel = "finishedDocumentChannel")
+  public void handleFinishedDocument(Message<Document> message) {
+    var document = message.getPayload();
+    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
+    var pipelineName = (String) message.getHeaders().get("pipelineName");
+
+    unlockDocument(message);
+  }
+
+  private void unlockDocument(Message<Document> message) {
+    var lockedId = message.getPayload().getId();
+
+    documentLockRegistry.unlock(lockedId);
   }
 }

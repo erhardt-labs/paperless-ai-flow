@@ -52,6 +52,17 @@ public class TagService extends AbstractReactivePagedService<TagResponse, Tag> {
       });
   }
 
+  public Mono<Tag> getByName(@NonNull String name) {
+    return getAll()
+      .flatMapMany(Flux::fromIterable)
+      .filter(tag -> tag.getName().equals(name))
+      .next()
+      .doOnNext(tag -> log.debug("Resolved tag name '{}' to ID: {}", name, tag.getId()))
+      .switchIfEmpty(Mono.fromRunnable(() ->
+        log.warn("Could not resolve tag name '{}'", name)
+      ).then(Mono.empty()));
+  }
+
   @Override
   protected Mono<PagedResponse<TagResponse>> fetchPage(int page) {
     log.info("Fetching tags page={}", page);

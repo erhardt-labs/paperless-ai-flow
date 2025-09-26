@@ -22,6 +22,10 @@ paperless:
         enabled: true
       ocr:
         model: openai/gpt-4o
+      patches:
+        - action: add
+          type: tag
+          name: erhardt consulting
 
 logging:
   level:

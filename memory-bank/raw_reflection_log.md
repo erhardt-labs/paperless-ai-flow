@@ -199,3 +199,33 @@ Improvements_Identified_For_Consolidation:
 - PatchOps reactive utility pattern: `applyIfPresent(current, source, applier)` for conditional Mono operations
 - Integration configuration pattern: Separate ChannelConfig for infrastructure, service-specific config for business logic
 ---
+
+---
+Date: 2025-09-26
+TaskRef: "Added CreatedDateExtractionModel and unit test for date extraction functionality"
+
+Learnings:
+- CreatedDateExtractionModel follows the established AbstractAiModel<T> template method pattern for consistency
+- CreatedDateDto uses Jackson @JsonFormat annotation for proper LocalDate serialization with "yyyy-MM-dd" pattern
+- DocumentMetadataExtractionService successfully integrated fifth parallel extraction: createdDate alongside title, tags, correspondent, customFields
+- Parallel processing with Mono.zip() scales elegantly from 4 to 5 simultaneous AI extractions
+- Unit test pattern established: CreatedDateExtractionModelTest follows same structure as other extraction model tests
+- Template method testing focuses on getUserPrompt method with proper validation of markdown formatting
+- Resource-based configuration extends to created-date prompt and schema files in src/main/resources/
+
+Difficulties:
+- Required careful integration into DocumentMetadataExtractionService.extractMetadata() method with proper Mono.zip() tuple handling
+- Ensuring consistent error handling pattern with Optional<LocalDate> return type for graceful degradation
+
+Successes:
+- Clean addition of fifth AI extraction model without disrupting existing functionality
+- Unit test coverage maintained at 100% for all extraction models (now 5 total)
+- Memory bank documentation updated to reflect the expanded AI extraction framework
+- Consistent architecture maintained: resource-based prompts/schemas, reactive error handling, parallel processing
+
+Improvements_Identified_For_Consolidation:
+- Expandable parallel AI processing: Mono.zip() pattern scales effectively for multiple simultaneous AI extractions
+- LocalDate extraction pattern: @JsonFormat with yyyy-MM-dd pattern for structured date extraction from AI
+- Consistent extraction model architecture: All models follow AbstractAiModel template with identical testing patterns
+- Template method pattern scalability: Adding new extraction types requires minimal changes to existing architecture
+---

@@ -25,7 +25,7 @@ public class CustomFieldExtractionModel extends AbstractAiModel<CustomFieldsDto>
   }
 
   @Override
-  protected String getSystemPrompt() throws IOException {
+  protected String getDefaultSystemPrompt() throws IOException {
     return FileUtils.readFileFromResources("prompts/custom-fields.md");
   }
 

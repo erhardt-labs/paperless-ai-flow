@@ -1,10 +1,8 @@
 package consulting.erhardt.paperless_ai_flow.app.service;
 
+import consulting.erhardt.paperless_ai_flow.app.ai.dtos.CreatedDateDto;
 import consulting.erhardt.paperless_ai_flow.app.ai.dtos.TitleDto;
-import consulting.erhardt.paperless_ai_flow.app.ai.models.CorrespondentExtractionModel;
-import consulting.erhardt.paperless_ai_flow.app.ai.models.CustomFieldExtractionModel;
-import consulting.erhardt.paperless_ai_flow.app.ai.models.TagExtractionModel;
-import consulting.erhardt.paperless_ai_flow.app.ai.models.TitleExtractionModel;
+import consulting.erhardt.paperless_ai_flow.app.ai.models.*;
 import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
@@ -21,6 +19,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +40,7 @@ public class DocumentMetadataExtractionService {
   private final TagService tagService;
   private final CorrespondentService correspondentService;
   private final CustomFieldsService customFieldsService;
+  private final CreatedDateExtractionModel createdDateExtractionModel;
 
   /**
    * Extract metadata from document content using parallel AI processing
@@ -55,40 +55,60 @@ public class DocumentMetadataExtractionService {
 
     // Run AI extractions in parallel when enabled
     var titleMono = extraction.isTitle() ?
-      extractTitle(content) : Mono.just(Optional.empty());
+      extractTitle(content, extraction) : Mono.just(Optional.empty());
+    var createdDateMono = extraction.isCreatedDate() ?
+      extractCreatedDate(content, extraction) : Mono.just(Optional.empty());
     var tagsMono = extraction.isTags() ?
-      extractTags(content) : Mono.just(Optional.empty());
+      extractTags(content, extraction) : Mono.just(Optional.empty());
     var correspondentMono = extraction.isCorrespondent() ?
-      extractCorrespondent(content) : Mono.just(Optional.empty());
+      extractCorrespondent(content, extraction) : Mono.just(Optional.empty());
     var customFieldsMono = extraction.isCustomFields() ?
-      extractCustomFields(content) : Mono.just(Optional.empty());
+      extractCustomFields(content, extraction) : Mono.just(Optional.empty());
 
-    return Mono.zip(titleMono, tagsMono, correspondentMono, customFieldsMono)
+    return Mono.zip(titleMono, createdDateMono, tagsMono, correspondentMono, customFieldsMono)
       .map(results -> {
         var title = (Optional<String>) results.getT1();
-        var tagsOpt = (Optional<List<Tag>>) results.getT2();
-        var correspondentOpt = (Optional<Correspondent>) results.getT3();
-        var customFieldsOpt = (Optional<List<CustomField>>) results.getT4();
+        var createdDate = (Optional<LocalDate>) results.getT2();
+        var tagsOpt = (Optional<List<Tag>>) results.getT3();
+        var correspondentOpt = (Optional<Correspondent>) results.getT4();
+        var customFieldsOpt = (Optional<List<CustomField>>) results.getT5();
 
         // create builder object
         var documentBuilder = document.toBuilder();
         title.ifPresent(documentBuilder::title);
+        createdDate.ifPresent(documentBuilder::createdDate);
         correspondentOpt.ifPresent(documentBuilder::correspondent);
         tagsOpt.ifPresent(documentBuilder::tags);
         customFieldsOpt.ifPresent(documentBuilder::customFields);
 
         // build
         var updatedDocument = documentBuilder.build();
-        log.info("Metadata extraction completed - Title: '{}', Tags: {}, Correspondent: {}, Custom fields: {}",
-          updatedDocument.getTitle(), updatedDocument.getTags(), updatedDocument.getCorrespondent(), updatedDocument.getCustomFields());
+        log.info("Metadata extraction completed - Title: '{}', Created date: {}, Tags: {}, Correspondent: {}, Custom fields: {}",
+          updatedDocument.getTitle(), updatedDocument.getCreatedDate(), updatedDocument.getTags(), updatedDocument.getCorrespondent(), updatedDocument.getCustomFields());
 
         return updatedDocument;
       });
   }
 
-  private Mono<Optional<String>> extractTitle(@NonNull String content) {
+  private Mono<Optional<LocalDate>> extractCreatedDate(@NonNull String content, @NonNull PipelineConfiguration.ExtractionConfiguration extraction) {
     return Mono.fromCallable(() -> {
-        var result = titleModel.process(content);
+        var result = createdDateExtractionModel.process(content, extraction.getCreatedDatePrompt());
+        return Optional.ofNullable(result)
+          .map(CreatedDateDto::getCreatedDate);
+      })
+      .subscribeOn(Schedulers.boundedElastic())
+      .doOnSubscribe(sub -> log.debug("Starting created date extraction"))
+      .doOnSuccess(opt -> opt.ifPresent(t -> log.debug("Created date extracted: '{}'", t)))
+      .onErrorResume(error -> {
+        log.error("Title extraction failed: {}", error.getMessage(), error);
+        return Mono.just(Optional.empty());
+      })
+      .switchIfEmpty(Mono.just(Optional.empty()));
+  }
+
+  private Mono<Optional<String>> extractTitle(@NonNull String content, @NonNull PipelineConfiguration.ExtractionConfiguration extraction) {
+    return Mono.fromCallable(() -> {
+        var result = titleModel.process(content, extraction.getTitlePrompt());
         return Optional.ofNullable(result)
           .map(TitleDto::getTitle);
       })
@@ -102,8 +122,8 @@ public class DocumentMetadataExtractionService {
       .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<List<Tag>>> extractTags(@NonNull String content) {
-    return Mono.fromCallable(() -> Optional.ofNullable(tagModel.process(content))) // may be null
+  private Mono<Optional<List<Tag>>> extractTags(@NonNull String content, @NonNull PipelineConfiguration.ExtractionConfiguration extraction) {
+    return Mono.fromCallable(() -> Optional.ofNullable(tagModel.process(content, extraction.getTagsPrompt())))
       .subscribeOn(Schedulers.boundedElastic())
       .doOnSubscribe(s -> log.debug("Starting tags extraction"))
       .flatMap(optDto -> optDto
@@ -131,8 +151,8 @@ public class DocumentMetadataExtractionService {
       .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<Correspondent>> extractCorrespondent(@NonNull String content) {
-    return Mono.fromCallable(() -> Optional.ofNullable(correspondentModel.process(content)))
+  private Mono<Optional<Correspondent>> extractCorrespondent(@NonNull String content, @NonNull PipelineConfiguration.ExtractionConfiguration extraction) {
+    return Mono.fromCallable(() -> Optional.ofNullable(correspondentModel.process(content, extraction.getCorrespondentPrompt())))
       .subscribeOn(Schedulers.boundedElastic())
       .flatMap(opt -> opt
         .map(dto -> correspondentService.getById(dto.getCorrespondentId())
@@ -153,8 +173,8 @@ public class DocumentMetadataExtractionService {
       .switchIfEmpty(Mono.just(Optional.empty()));
   }
 
-  private Mono<Optional<List<CustomField>>> extractCustomFields(@NonNull String content) {
-    return Mono.fromCallable(() -> Optional.ofNullable(customFieldModel.process(content))) // may be null
+  private Mono<Optional<List<CustomField>>> extractCustomFields(@NonNull String content, @NonNull PipelineConfiguration.ExtractionConfiguration extraction) {
+    return Mono.fromCallable(() -> Optional.ofNullable(customFieldModel.process(content, extraction.getCustomFieldsPrompt()))) // may be null
       .subscribeOn(Schedulers.boundedElastic())
       .doOnSubscribe(s -> log.debug("Starting custom fields extraction"))
       .flatMap(optDto -> optDto

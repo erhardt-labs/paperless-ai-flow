@@ -10,7 +10,7 @@
 ### Major Achievements (NEW)
 1. **✅ Complete AI Metadata Extraction Framework - COMPLETE**
    - ✅ AbstractAiModel<T> template method pattern for consistent AI processing
-   - ✅ Four specialized extraction models: Title, Tags, Correspondent, CustomFields  
+   - ✅ Five specialized extraction models: Title, Tags, Correspondent, CustomFields, CreatedDate
    - ✅ DocumentMetadataExtractionService with parallel processing using Mono.zip()
    - ✅ JSON Schema-driven structured output from OpenAI with validation
    - ✅ Resource-based prompt templates and schemas for each extraction type

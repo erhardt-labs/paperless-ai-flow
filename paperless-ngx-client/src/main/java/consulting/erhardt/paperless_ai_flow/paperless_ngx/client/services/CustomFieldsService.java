@@ -1,7 +1,9 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services;
 
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.PaperlessNgxApiClient;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.CustomFieldResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.PagedResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.mappers.CustomFieldMapper;
@@ -9,6 +11,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Slf4j
@@ -29,6 +32,17 @@ public class CustomFieldsService extends AbstractReactivePagedService<CustomFiel
     super(cacheManager);
     this.webClient = webClient;
     this.mapper = mapper;
+  }
+
+  public Mono<CustomField> getByName(@NonNull String name) {
+    return getAll()
+      .flatMapMany(Flux::fromIterable)
+      .filter(customField -> customField.getName().equals(name))
+      .next()
+      .doOnNext(customField -> log.debug("Resolved custom field name '{}' to ID: {}", name, customField.getId()))
+      .switchIfEmpty(Mono.fromRunnable(() ->
+        log.warn("Could not resolve custom field name '{}'", name)
+      ).then(Mono.empty()));
   }
 
   @Override
