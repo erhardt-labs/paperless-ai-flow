@@ -351,3 +351,146 @@ public class PatchOps {
 - Maintain meaningful error messages and context
 - Convert all synchronous service calls to reactive composition patterns
 - Test reactive flows with StepVerifier and reactor-test
+
+## Document Update & API Integration Patterns
+
+### Document Update Pattern with Custom Serialization
+**Core Principle:** Handle external API compatibility requirements through custom Jackson serializers while maintaining type safety.
+
+**Implementation:**
+```java
+@Jacksonized
+@Builder
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class DocumentPatchRequest {
+  @JsonProperty("custom_fields")
+  @JsonSerialize(using = MapAsArraySerializer.class)
+  Map<Integer, String> customFields;
+  
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+  LocalDate created;
+  
+  @NonNull
+  @Builder.Default
+  Boolean removeInboxTags = false;
+}
+```
+
+**Key Features:**
+- **@JsonInclude(NON_NULL):** Only serialize non-null fields for efficient partial updates
+- **Custom serialization:** Handle external API format requirements (e.g., Map to Array conversion)
+- **@JsonFormat:** Ensure proper date/time serialization for API compatibility
+- **Builder defaults:** Provide sensible defaults with @Builder.Default annotation
+- **Immutable design:** @Value with @Builder for thread-safe operations
+
+**Benefits:**
+- **API compatibility:** Meet external system requirements without compromising internal type safety
+- **Partial updates:** PATCH operations only include changed fields
+- **Type safety:** Compile-time validation prevents serialization errors
+- **Testability:** Easy to create test instances and verify serialization behavior
+
+### Custom Serialization Pattern for External API Compatibility
+**Core Principle:** When external APIs require specific JSON formats that don't match Java object models, implement custom Jackson serializers.
+
+**MapAsArraySerializer Example:**
+```java
+public class MapAsArraySerializer extends JsonSerializer<Map<Integer, String>> {
+  @Override
+  public void serialize(Map<Integer, String> value, JsonGenerator gen, 
+                       SerializerProvider serializers) throws IOException {
+    gen.writeStartArray();
+    for (var entry : value.entrySet()) {
+      gen.writeStartObject();
+      gen.writeNumberField("field", entry.getKey());
+      gen.writeStringField("value", entry.getValue());
+      gen.writeEndObject();
+    }
+    gen.writeEndArray();
+  }
+}
+```
+
+**Implementation Guidelines:**
+- **Understand target format:** Analyze external API documentation to determine exact JSON structure required
+- **Implement JsonSerializer<T>:** Create custom serializer for specific type transformations
+- **Use @JsonSerialize annotation:** Apply serializer to specific fields needing custom handling
+- **Test thoroughly:** Validate both serialization output and API compatibility
+
+**Rationale:** Enables seamless integration with external APIs that have non-standard JSON requirements while maintaining clean, type-safe internal models.
+
+### Immutable Entity Pattern with Lombok
+**Core Principle:** Create thread-safe, predictable API request/response entities using Lombok's immutable patterns.
+
+**Pattern Implementation:**
+```java
+@Jacksonized           // Jackson integration with Lombok
+@Builder              // Builder pattern for flexible object creation
+@Value                // Immutable class with automatic getters
+@JsonInclude(JsonInclude.Include.NON_NULL)  // Conditional serialization
+public class ApiRequestEntity {
+  @JsonProperty("field_name")
+  String fieldValue;
+  
+  @NonNull
+  @Builder.Default
+  Boolean defaultField = false;
+}
+```
+
+**Key Annotations:**
+- **@Jacksonized:** Enables Jackson deserialization with Lombok @Builder
+- **@Builder:** Provides fluent API for object creation with optional fields
+- **@Value:** Creates immutable class with final fields and automatic getters
+- **@JsonProperty:** Maps Java field names to external API field names
+- **@NonNull with @Builder.Default:** Enforces non-null constraints with sensible defaults
+
+**Benefits:**
+- **Thread safety:** Immutable objects safe for concurrent use
+- **Predictability:** Objects cannot be modified after creation, reducing bugs
+- **Builder flexibility:** Easy to create objects with optional fields
+- **Jackson compatibility:** Seamless JSON serialization/deserialization
+- **Compile-time validation:** @NonNull prevents null pointer exceptions
+
+### Integration Testing Pattern with External API Validation
+**Core Principle:** Use WireMock with JSON Schema validation to ensure comprehensive external API compatibility testing.
+
+**Testing Structure:**
+```java
+@SpringBootTest
+@ExtendWith(WireMockExtension.class)
+class ExternalApiIntegrationTest {
+  
+  @BeforeEach
+  void setupMocks() {
+    // Mock external API responses with exact format matching
+    stubFor(patch(urlEqualTo("/api/documents/123"))
+      .withRequestBody(matchingJsonPath("$.custom_fields[*].field"))
+      .willReturn(aResponse().withStatus(200)));
+  }
+  
+  @Test
+  void testApiCompatibility() {
+    // Test actual request serialization matches expected format
+    var request = DocumentPatchRequest.builder()
+      .customFields(Map.of(1, "value"))
+      .build();
+      
+    // Verify request serialization
+    var json = objectMapper.writeValueAsString(request);
+    assertThat(json).matches(jsonSchemaFromResource("schemas/request.json"));
+  }
+}
+```
+
+**Key Components:**
+- **WireMock:** Mock external API endpoints with realistic responses
+- **JSON Schema validation:** Validate request/response structure compatibility
+- **RequestBody matching:** Verify outgoing requests match expected format
+- **Integration scope:** Test complete serialization/deserialization cycle
+
+**Benefits:**
+- **API compatibility assurance:** Catch breaking changes before production
+- **Realistic testing:** Mock responses match actual external API behavior
+- **Regression prevention:** Automated validation prevents compatibility issues
+- **Documentation:** Tests serve as executable API compatibility documentation

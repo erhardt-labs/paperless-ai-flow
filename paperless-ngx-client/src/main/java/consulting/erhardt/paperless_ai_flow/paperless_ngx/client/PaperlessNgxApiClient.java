@@ -2,9 +2,11 @@ package consulting.erhardt.paperless_ai_flow.paperless_ngx.client;
 
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.*;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PatchExchange;
 import reactor.core.publisher.Mono;
 
 @HttpExchange("/api")
@@ -18,6 +20,9 @@ public interface PaperlessNgxApiClient {
 
   @GetExchange("/documents/{id}/")
   Mono<DocumentResponse> getDocument(@PathVariable("id") Integer id);
+
+  @PatchExchange("/documents/{id}/")
+  Mono<DocumentResponse> patchDocument(@PathVariable("id") Integer id, @RequestBody DocumentPatchRequest document);
 
   @GetExchange("/documents/{id}/download/")
   Mono<byte[]> downloadDocument(@PathVariable("id") Integer id);

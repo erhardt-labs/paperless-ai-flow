@@ -1,6 +1,6 @@
 # Progress: Paperless-AI Pipeline
 
-## Current Status: Spring Integration Pipeline Complete - End-to-End Workflow Ready
+## Current Status: Document Update Infrastructure Complete - Final Integration Phase
 
 ### What Works ✅
 - **Complete Memory Bank System:** Comprehensive foundation and implementation documentation
@@ -29,6 +29,13 @@
   - **WebClient configuration** and authentication isolated in client module
   - **Comprehensive caching** with Spring Cache abstraction for performance
   - **Independent test suite** with WireMock for external API mocking
+
+- **Document Update Infrastructure:** ✅ COMPLETE
+  - **DocumentPatchRequest entity** with proper JSON serialization and @JsonInclude(NON_NULL) for optional fields
+  - **MapAsArraySerializer** custom Jackson serializer for Paperless-ngx custom field format compatibility
+  - **Enhanced PaperlessNgxApiClient** with patchDocument(id, request) functionality
+  - **JSON Schema validation** for patch request structure with comprehensive test coverage
+  - **Integration testing** with WireMock mocking actual Paperless API responses and request validation
 
 - **Complete AI Metadata Extraction Framework:** ✅ COMPLETE
   - **AbstractAiModel<T>** template method pattern for consistent AI processing across all extraction types
@@ -112,20 +119,20 @@
 
 ### What's Left to Build 🚧
 
-#### Phase 3: Pipeline Integration (ALMOST COMPLETE)
-1. **✅ End-to-End Pipeline Workflow - COMPLETE**
-   - ✅ Connected DocumentPollingService with PdfOcrService
-   - ✅ Implemented complete poll → OCR → metadata extraction cycle
-   - ✅ Pipeline execution orchestration with Spring Integration channels
-   - [ ] Document state management and idempotency tracking
+#### Phase 3: Final Pipeline Integration (ALMOST COMPLETE)
+1. **✅ Document Update Infrastructure - COMPLETE**
+   - ✅ DocumentPatchRequest entity with complete field support (title, created, correspondent, tags, customFields)
+   - ✅ MapAsArraySerializer for Paperless API custom field format compatibility
+   - ✅ Enhanced PaperlessNgxApiClient with patchDocument functionality
+   - ✅ Comprehensive integration testing with JSON schema validation
+   - ✅ Document mapper patterns for AI extraction result conversion
 
-2. **Document Processing Enhancement**
-   - ✅ Parallel AI metadata extraction (title, tags, correspondent, custom fields)
-   - ✅ Extended PaperlessApiClient with correspondent and custom field APIs
+2. **Final Pipeline Connection**
+   - ✅ Parallel AI metadata extraction (title, tags, correspondent, custom fields, created date)
    - ✅ Document download functionality in PaperlessApiClient with proper authentication
-   - [ ] Document metadata update operations
-   - [ ] Processed document tagging and state tracking
-   - [ ] Error handling for document processing failures
+   - [ ] DocumentFieldPatchingService integration with patch request building
+   - [ ] Final Spring Integration channel connecting AI results to document updates
+   - [ ] End-to-end workflow: poll → OCR → AI extraction → document patch → logging
 
 #### Phase 4: Production Readiness (Medium Priority)
 3. **Configuration Enhancement**

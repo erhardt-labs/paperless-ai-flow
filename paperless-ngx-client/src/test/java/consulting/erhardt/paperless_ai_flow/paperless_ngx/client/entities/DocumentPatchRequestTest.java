@@ -1,22 +1,14 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.networknt.schema.JsonSchema;
-import com.networknt.schema.JsonSchemaFactory;
-import com.networknt.schema.SpecVersion;
-import com.networknt.schema.ValidationMessage;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.mappers.AbstractDocumentPatchRequestTest;
 import lombok.NonNull;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -38,29 +30,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * 3) "created" is rendered as YYYY-MM-DD.
  * 4) "remove_inbox_tags" is always present and never null.
  */
-class DocumentPatchRequestTest {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static JsonSchema SCHEMA;
+class DocumentPatchRequestTest extends AbstractDocumentPatchRequestTest {
 
   /** All optional data-bearing fields (remove_inbox_tags is handled separately). */
   enum F {
     TITLE, CREATED, CONTENT, CORRESPONDENT, TAGS, CUSTOM_FIELDS
-  }
-
-  @BeforeAll
-  static void setup() throws Exception {
-    // Register JavaTimeModule so LocalDate honors @JsonFormat
-    MAPPER.registerModule(new JavaTimeModule());
-
-    // Load JSON Schema from test resources
-    try (InputStream is = DocumentPatchRequestTest.class
-      .getResourceAsStream("/schemas/PatchedDocumentRequest.json")) {
-      assertNotNull(is, "Schema resource not found at /schemas/PatchedDocumentRequest.json");
-      var schemaNode = MAPPER.readTree(is);
-      var factory = JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012);
-      SCHEMA = factory.getSchema(schemaNode);
-    }
   }
 
   /**
@@ -86,35 +60,6 @@ class DocumentPatchRequestTest {
       });
   }
 
-  /** Serialize a request and return the parsed ObjectNode. */
-  private static ObjectNode toJson(DocumentPatchRequest req) throws JsonProcessingException {
-    var json = MAPPER.writeValueAsString(req);
-    var node = MAPPER.readTree(json);
-    assertTrue(node.isObject(), "Serialized JSON must be an object");
-    return (ObjectNode) node;
-  }
-
-  /** Validate against schema. */
-  private static void assertSchemaValid(ObjectNode node) {
-    Set<ValidationMessage> errors = SCHEMA.validate(node);
-    assertTrue(errors.isEmpty(), () -> "Schema violations:\n" + String.join("\n",
-      errors.stream().map(ValidationMessage::toString).toList()));
-  }
-
-  /** Assert JSON has exactly expected keys (no more, no less). */
-  private static void assertExactFields(ObjectNode node, Set<String> expectedKeys) {
-    var actual = new LinkedHashSet<String>();
-    node.fieldNames().forEachRemaining(actual::add);
-    assertEquals(expectedKeys, actual, "JSON must contain exactly the expected fields");
-  }
-
-  /** Always required checks for remove_inbox_tags. */
-  private static void assertRemoveInboxTags(ObjectNode node, boolean expectedValue) {
-    assertTrue(node.has("remove_inbox_tags"), "'remove_inbox_tags' must be present");
-    assertTrue(node.get("remove_inbox_tags").isBoolean(), "'remove_inbox_tags' must be boolean");
-    assertEquals(expectedValue, node.get("remove_inbox_tags").asBoolean(),
-      "remove_inbox_tags must match expected value");
-  }
 
   @ParameterizedTest(name = "[{index}] fields={0}, remove_inbox_tags_true={1}")
   @MethodSource("allCombinations")

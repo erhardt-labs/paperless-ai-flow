@@ -55,6 +55,13 @@ public class DocumentService implements PaperlessApiService<Document> {
       .flatMap(this::toDto);
   }
 
+  public Mono<Document> patchById(@NonNull Integer id, @NonNull Document document) {
+    var request = documentMapper.toPatchRequest(document);
+
+    return webClient.patchDocument(id, request)
+      .flatMap(this::toDto);
+  }
+
   public Mono<byte[]> downloadById(@NonNull Integer id) {
     return webClient.downloadDocument(id);
   }

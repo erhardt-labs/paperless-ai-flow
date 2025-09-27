@@ -249,6 +249,90 @@ Final result handling
 - **Scalability:** Message channels provide natural backpressure handling
 - **Observability:** Message flow enables comprehensive logging and monitoring
 
+### Document Update Pattern (NEW)
+**Purpose:** Handle document metadata updates with custom API serialization for Paperless-ngx integration
+
+**Core Architecture:**
+```java
+@Jacksonized
+@Builder
+@Value
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class DocumentPatchRequest {
+  @JsonProperty("title")
+  String title;
+
+  @JsonProperty("created")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+  LocalDate created;
+
+  @JsonProperty("correspondent")
+  Integer correspondentId;
+
+  @JsonProperty("tags")
+  List<Integer> tagIds;
+
+  @JsonProperty("custom_fields")
+  @JsonSerialize(using = MapAsArraySerializer.class)
+  Map<Integer, String> customFields;
+
+  @NonNull
+  @JsonProperty("remove_inbox_tags")
+  @Builder.Default
+  Boolean removeInboxTags = false;
+}
+```
+
+**Custom Serialization Pattern:**
+```java
+public class MapAsArraySerializer extends JsonSerializer<Map<Integer, String>> {
+  @Override
+  public void serialize(Map<Integer, String> value, JsonGenerator gen, 
+                       SerializerProvider serializers) throws IOException {
+    gen.writeStartArray();
+    for (var entry : value.entrySet()) {
+      gen.writeStartObject();
+      gen.writeNumberField("field", entry.getKey());
+      gen.writeStringField("value", entry.getValue());
+      gen.writeEndObject();
+    }
+    gen.writeEndArray();
+  }
+}
+```
+
+**Key Features:**
+- **@JsonInclude(NON_NULL):** Only serialize non-null fields for partial updates
+- **Custom serialization:** MapAsArraySerializer converts Map<Integer, String> to Paperless-ngx expected format
+- **Date formatting:** @JsonFormat ensures LocalDate serialized as "yyyy-MM-dd" string
+- **Builder defaults:** @Builder.Default provides sensible defaults like removeInboxTags = false
+- **Immutable design:** @Value with @Builder for thread-safe, predictable document patch requests
+
+**API Integration:**
+```java
+// PaperlessNgxApiClient interface method
+Mono<DocumentResponse> patchDocument(@PathVariable("id") Integer id, 
+                                    @RequestBody DocumentPatchRequest request);
+
+// Usage example
+var patchRequest = DocumentPatchRequest.builder()
+  .title("Updated Title")
+  .correspondentId(123)
+  .tagIds(List.of(1, 2, 3))
+  .customFields(Map.of(5, "extracted value", 6, "another value"))
+  .removeInboxTags(true)
+  .build();
+
+return apiClient.patchDocument(documentId, patchRequest);
+```
+
+**Benefits:**
+- **API compatibility:** Custom serialization matches Paperless-ngx expected JSON format
+- **Type safety:** Strongly typed fields prevent serialization errors
+- **Partial updates:** Only non-null fields included in PATCH requests
+- **Immutable operations:** Thread-safe document update operations
+- **Testability:** Easy to create test instances with builder pattern
+
 ### Reactive Utility Patterns (NEW)
 **Purpose:** Provide reusable reactive composition utilities for conditional operations
 

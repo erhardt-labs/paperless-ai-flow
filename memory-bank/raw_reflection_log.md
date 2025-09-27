@@ -229,3 +229,39 @@ Improvements_Identified_For_Consolidation:
 - Consistent extraction model architecture: All models follow AbstractAiModel template with identical testing patterns
 - Template method pattern scalability: Adding new extraction types requires minimal changes to existing architecture
 ---
+
+---
+Date: 2025-09-27
+TaskRef: "Complete document update infrastructure with DocumentPatchRequest and custom serialization for Paperless-ngx compatibility"
+
+Learnings:
+- DocumentPatchRequest entity provides complete document update functionality with all Paperless-ngx supported fields
+- @JsonInclude(JsonInclude.Include.NON_NULL) enables partial updates by only serializing non-null fields in PATCH requests
+- MapAsArraySerializer custom Jackson serializer converts Map<Integer, String> to Paperless-ngx expected custom field format
+- Custom field format requires array of objects with "field" (ID) and "value" properties rather than standard map serialization
+- @JsonFormat(pattern = "yyyy-MM-dd") ensures LocalDate fields serialize correctly for Paperless API date format expectations
+- @Builder.Default with @NonNull provides sensible defaults like removeInboxTags = false while enforcing non-null constraints
+- @Jacksonized with @Builder and @Value creates immutable, thread-safe document patch requests with builder pattern
+- Enhanced PaperlessNgxApiClient interface now includes patchDocument(Integer id, DocumentPatchRequest request) method
+- Comprehensive integration testing with JSON schema validation ensures API compatibility and request structure validation
+- WireMock integration testing validates actual HTTP request serialization matches expected Paperless API format
+
+Difficulties:
+- Understanding Paperless-ngx custom field format requirement: array of objects instead of key-value map serialization
+- Ensuring proper Jackson configuration with Lombok annotations for immutable builder pattern compatibility
+- Validating complex nested JSON serialization behavior through comprehensive testing
+
+Successes:
+- Complete document update infrastructure ready for production use
+- Type-safe, immutable document patch requests with compile-time validation
+- Custom serialization seamlessly integrates with existing Jackson configuration
+- Comprehensive test coverage validates all serialization edge cases and API compatibility
+- Memory bank fully updated to reflect current project state with new architectural patterns documented
+
+Improvements_Identified_For_Consolidation:
+- Document Update Pattern: @JsonInclude(NON_NULL) for partial PATCH updates, custom serialization for API compatibility
+- Custom Serialization Pattern: MapAsArraySerializer demonstrates custom Jackson serializer for external API format requirements  
+- Immutable Entity Pattern: @Jacksonized + @Builder + @Value for thread-safe, type-safe API request entities
+- Integration Testing Pattern: WireMock + JSON schema validation for comprehensive external API compatibility testing
+- Memory Bank Maintenance: Regular comprehensive updates ensure documentation accuracy across major implementation phases
+---
