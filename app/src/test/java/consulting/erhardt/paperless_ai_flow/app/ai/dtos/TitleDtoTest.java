@@ -116,6 +116,8 @@ class TitleDtoTest {
 
         // Then
         assertThat(validationMessages).isNotEmpty();
-        assertThat(validationMessages.toString()).contains("additionalProperties");
+        // Handle different error message formats between environments
+        var errorMessage = validationMessages.toString().toLowerCase();
+        assertThat(errorMessage).containsAnyOf("additionalproperties", "additional properties");
     }
 }

@@ -304,3 +304,32 @@ Improvements_Identified_For_Consolidation:
 - Integration Testing Pattern: WireMock + JSON schema validation for comprehensive external API compatibility testing
 - Memory Bank Maintenance: Regular comprehensive updates ensure documentation accuracy across major implementation phases
 ---
+
+---
+Date: 2025-09-28
+TaskRef: "Fix TitleDtoTest.titleDto_shouldRejectAdditionalProperties test failure in GitHub CI/CD environment"
+
+Learnings:
+- JSON schema validation error messages can differ between environments: local vs GitHub CI/CD produce different message formats
+- networknt/json-schema-validator library generates environment-specific error messages: "additionalProperties" (local) vs "additional properties" (GitHub CI)
+- Different JVM versions, library versions, or locale settings can cause validation error message format variations
+- Environment-agnostic test assertions needed: use .toLowerCase() and .containsAnyOf() to handle multiple message formats
+- GitHub CI error format: "[$.extraField: is not defined in the schema and the schema does not allow additional properties]"
+- Local environment formats may use: "[$.extraField: additionalProperties not allowed]" or similar variations
+
+Difficulties:
+- Test passed locally but failed in CI/CD due to different error message formats
+- Root cause identification required analyzing both error messages and understanding library behavior differences across environments
+
+Successes:
+- Fixed test to handle both error message formats using flexible string matching
+- Changed from exact string match .contains("additionalProperties") to flexible matching with multiple format options
+- Used .toLowerCase() normalization and .containsAnyOf("additionalproperties", "additional properties") for robust assertions
+- Validation test confirmed fix handles both GitHub CI and local environment message formats correctly
+
+Improvements_Identified_For_Consolidation:
+- Environment-agnostic testing pattern: Use flexible string assertions that handle variations in external library error messages
+- JSON Schema testing robustness: Normalize error messages with .toLowerCase() and check multiple format variations
+- CI/CD test reliability: Account for environment differences in error message formatting when testing external libraries
+- Test assertion flexibility: Use .containsAnyOf() instead of exact .contains() matches for external library-generated messages
+---
