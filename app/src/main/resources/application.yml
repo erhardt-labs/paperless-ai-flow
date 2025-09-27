@@ -26,6 +26,12 @@ paperless:
         - action: add
           type: tag
           name: erhardt consulting
+        - action: add
+          type: tag
+          name: ocr-manual
+        - action: add
+          type: tag
+          name: Eingang
 
 logging:
   level:

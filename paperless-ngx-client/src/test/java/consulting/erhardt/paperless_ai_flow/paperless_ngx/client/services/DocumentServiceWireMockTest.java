@@ -1,8 +1,5 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.PaperlessNgxApiClient;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.configs.TestPaperlessNgxHttpClientConfig;
@@ -29,13 +26,11 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -67,14 +62,11 @@ class DocumentServiceWireMockTest {
   private TagService tagService;
 
   private DocumentService documentService;
-  private ObjectMapper objectMapper;
   private static final String PATCHED_DOCUMENT_SCHEMA_PATH = "/schemas/PatchedDocumentRequest.json";
 
   @BeforeEach
-  void setUp() throws IOException {
+  void setUp() {
     documentService = new DocumentService(apiClient, documentMapper, correspondentService, customFieldsService, tagService);
-    objectMapper = new ObjectMapper();
-    objectMapper.registerModule(new JavaTimeModule());
 
     // Load and parse the JSON schema for validation
     var schemaInputStream = getClass().getResourceAsStream(PATCHED_DOCUMENT_SCHEMA_PATH);
@@ -82,7 +74,7 @@ class DocumentServiceWireMockTest {
   }
 
   @Test
-  void patchById_shouldSendValidSchemaCompliantRequest() throws Exception {
+  void patch_shouldSendValidSchemaCompliantRequest() throws Exception {
     // Given
     var documentId = 123;
     var document = Document.builder()
@@ -137,27 +129,13 @@ class DocumentServiceWireMockTest {
         .removeInboxTags(false)
         .build();
 
-    when(documentMapper.toPatchRequest(document)).thenReturn(patchRequest);
+    when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
 
     // Setup service mocks
     when(correspondentService.getById(1)).thenReturn(Mono.just(document.getCorrespondent()));
-    when(customFieldsService.getById(1)).thenReturn(Mono.just(document.getCustomFields().get(0)));
+    when(customFieldsService.getById(1)).thenReturn(Mono.just(document.getCustomFields().getFirst()));
     when(tagService.getById(1)).thenReturn(Mono.just(document.getTags().get(0)));
     when(tagService.getById(2)).thenReturn(Mono.just(document.getTags().get(1)));
-
-    var documentResponse = DocumentResponse.builder()
-        .id(documentId)
-        .title("Updated Test Document")
-        .content("Updated content for testing")
-        .createdDate(LocalDate.of(2024, 1, 15))
-        .correspondentId(1)
-        .tagIds(List.of(1, 2))
-        .customFields(List.of(DocumentResponse.CustomField.builder()
-            .id(1)
-            .value("High")
-            .build()))
-        .build();
-
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Set up WireMock to validate request schema compliance
@@ -171,7 +149,7 @@ class DocumentServiceWireMockTest {
             .withBody(expectedResponse)));
 
     // When & Then
-    StepVerifier.create(documentService.patchById(documentId, document))
+    StepVerifier.create(documentService.patch(document, false))
         .expectNextMatches(updatedDoc ->
             updatedDoc.getId().equals(documentId) &&
             "Updated Test Document".equals(updatedDoc.getTitle()) &&
@@ -184,7 +162,7 @@ class DocumentServiceWireMockTest {
   }
 
   @Test
-  void patchById_shouldMakeCorrectRestRequest() throws Exception {
+  void patch_shouldMakeCorrectRestRequest() {
     // Given
     var documentId = 456;
     var document = Document.builder()
@@ -214,15 +192,7 @@ class DocumentServiceWireMockTest {
         .removeInboxTags(false)
         .build();
 
-    when(documentMapper.toPatchRequest(document)).thenReturn(patchRequest);
-
-    var documentResponse = DocumentResponse.builder()
-        .id(documentId)
-        .title("Another Test Document")
-        .content("Test content")
-        .createdDate(LocalDate.of(2024, 2, 20))
-        .build();
-
+    when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Set up WireMock with custom request matcher
@@ -238,7 +208,7 @@ class DocumentServiceWireMockTest {
             .withBody(expectedResponse)));
 
     // When & Then
-    StepVerifier.create(documentService.patchById(documentId, document))
+    StepVerifier.create(documentService.patch(document, false))
         .expectNextMatches(updatedDoc ->
             updatedDoc.getId().equals(documentId) &&
             "Another Test Document".equals(updatedDoc.getTitle()))
@@ -254,7 +224,7 @@ class DocumentServiceWireMockTest {
   }
 
   @Test
-  void patchById_shouldHandleComplexCustomFields() throws Exception {
+  void patch_shouldHandleComplexCustomFields() {
     // Given
     var documentId = 789;
     var customFields = List.of(
@@ -303,23 +273,12 @@ class DocumentServiceWireMockTest {
         .removeInboxTags(false)
         .build();
 
-    when(documentMapper.toPatchRequest(document)).thenReturn(patchRequest);
+    when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
 
     // Setup service mocks
     when(customFieldsService.getById(1)).thenReturn(Mono.just(customFields.get(0)));
     when(customFieldsService.getById(2)).thenReturn(Mono.just(customFields.get(1)));
     when(customFieldsService.getById(3)).thenReturn(Mono.just(customFields.get(2)));
-
-    var documentResponse = DocumentResponse.builder()
-        .id(documentId)
-        .title("Complex Custom Fields Test")
-        .customFields(List.of(
-            DocumentResponse.CustomField.builder().id(1).value("String Value").build(),
-            DocumentResponse.CustomField.builder().id(2).value("42").build(),
-            DocumentResponse.CustomField.builder().id(3).value("3.14").build()
-        ))
-        .build();
-
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Verify custom fields are serialized as array format - use individual matchers since order may vary
@@ -334,7 +293,7 @@ class DocumentServiceWireMockTest {
             .withBody(expectedResponse)));
 
     // When & Then
-    StepVerifier.create(documentService.patchById(documentId, document))
+    StepVerifier.create(documentService.patch(document, false))
         .expectNextMatches(updatedDoc ->
             updatedDoc.getId().equals(documentId) &&
             updatedDoc.getCustomFields().size() == 3)
@@ -342,7 +301,7 @@ class DocumentServiceWireMockTest {
   }
 
   @Test
-  void patchById_shouldHandleEmptyOptionalFields() throws Exception {
+  void patch_shouldHandleEmptyOptionalFields() {
     // Given
     var documentId = 999;
     var document = Document.builder()
@@ -366,13 +325,7 @@ class DocumentServiceWireMockTest {
         .removeInboxTags(false)
         .build();
 
-    when(documentMapper.toPatchRequest(document)).thenReturn(patchRequest);
-
-    var documentResponse = DocumentResponse.builder()
-        .id(documentId)
-        .title("Minimal Document")
-        .build();
-
+    when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Verify null/empty fields are handled correctly
@@ -385,7 +338,7 @@ class DocumentServiceWireMockTest {
             .withBody(expectedResponse)));
 
     // When & Then
-    StepVerifier.create(documentService.patchById(documentId, document))
+    StepVerifier.create(documentService.patch(document, false))
         .expectNextMatches(updatedDoc ->
             updatedDoc.getId().equals(documentId) &&
             "Minimal Document".equals(updatedDoc.getTitle()))

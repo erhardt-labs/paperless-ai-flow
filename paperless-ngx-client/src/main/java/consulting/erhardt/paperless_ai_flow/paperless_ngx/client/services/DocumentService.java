@@ -55,10 +55,10 @@ public class DocumentService implements PaperlessApiService<Document> {
       .flatMap(this::toDto);
   }
 
-  public Mono<Document> patchById(@NonNull Integer id, @NonNull Document document) {
-    var request = documentMapper.toPatchRequest(document);
+  public Mono<Document> patch(@NonNull Document document, boolean removeInboxTags) {
+    var request = documentMapper.toPatchRequest(document, removeInboxTags);
 
-    return webClient.patchDocument(id, request)
+    return webClient.patchDocument(document.getId(), request)
       .flatMap(this::toDto);
   }
 

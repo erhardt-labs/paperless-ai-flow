@@ -57,13 +57,17 @@ public class PipelineConfiguration {
     @Builder.Default
     List<PatchConfiguration> patches = List.of();
 
+    @Builder.Default
+    boolean removeInboxTags = false;
+
     public PipelineDefinition(
       @NonNull String name,
       @NonNull SelectorConfiguration selector,
       PollingConfiguration polling,
       OcrConfiguration ocr,
       ExtractionConfiguration extraction,
-      List<PatchConfiguration> patches
+      List<PatchConfiguration> patches,
+      Boolean removeInboxTags
     ) {
       this.name = name;
       this.selector = selector;
@@ -74,6 +78,7 @@ public class PipelineConfiguration {
       this.ocr = (ocr != null) ? ocr : OcrConfiguration.builder().build();
       this.extraction = (extraction != null) ? extraction : ExtractionConfiguration.builder().build();
       this.patches = (patches != null) ? patches : List.of();
+      this.removeInboxTags = (removeInboxTags != null) ? removeInboxTags : false;
     }
   }
 

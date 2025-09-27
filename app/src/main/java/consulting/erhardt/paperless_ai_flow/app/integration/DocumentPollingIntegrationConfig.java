@@ -3,6 +3,8 @@ package consulting.erhardt.paperless_ai_flow.app.integration;
 import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
 import consulting.erhardt.paperless_ai_flow.app.service.*;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.DocumentService;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,10 +18,6 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 
-/**
- * Spring Integration configuration for document processing pipeline
- * Documents flow: Polling -> pollingChannel -> OCR -> ocrResultChannel -> Next Steps
- */
 @Configuration
 @EnableIntegration
 @IntegrationComponentScan
@@ -33,6 +31,7 @@ public class DocumentPollingIntegrationConfig {
   private final PdfOcrService pdfOcrService;
   private final DocumentMetadataExtractionService metadataExtractionService;
   private final DocumentFieldPatchingService documentFieldPatchingService;
+  private final DocumentService documentService;
 
   @Qualifier("documentLockRegistry")
   private final IdLockRegistryService<Integer> documentLockRegistry;
@@ -89,13 +88,12 @@ public class DocumentPollingIntegrationConfig {
   @ServiceActivator(inputChannel = "pollingChannel", outputChannel = "metadataExtractChannel")
   public Message<Document> processDocumentOcr(Message<Document> message) {
     var document = message.getPayload();
-    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
-    var pipelineName = (String) message.getHeaders().get("pipelineName");
+    var pipelineName = getPipelineName(message);
 
     log.info("Processing OCR for document {} from pipeline '{}'", document.getId(), pipelineName);
 
     try {
-      // Process the document through OCR
+      var pipeline = getPipelineDefinition(message);
       var ocrResult = pdfOcrService.processDocument(document, pipeline).block();
 
       if(ocrResult != null) {
@@ -129,14 +127,13 @@ public class DocumentPollingIntegrationConfig {
   @ServiceActivator(inputChannel = "metadataExtractChannel", outputChannel = "metadataResultChannel")
   public Message<Document> processMetadataExtraction(Message<Document> message) {
     var document = message.getPayload();
-    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
-    var pipelineName = (String) message.getHeaders().get("pipelineName");
+    var pipelineName = getPipelineName(message);
 
     log.info("Starting metadata extraction for document {} from pipeline '{}'",
       document.getId(), pipelineName);
 
     try {
-      // Process the OCR result through metadata extraction
+      var pipeline = getPipelineDefinition(message);
       var processedDocument = metadataExtractionService.extractMetadata(pipeline, document).block();
 
       if(processedDocument != null) {
@@ -160,24 +157,25 @@ public class DocumentPollingIntegrationConfig {
   @ServiceActivator(inputChannel = "metadataResultChannel", outputChannel = "finishedDocumentChannel")
   public Message<Document> processPatching(Message<Document> message) {
     var document = message.getPayload();
-    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
-    var pipelineName = (String) message.getHeaders().get("pipelineName");
-    var patches =  pipeline.getPatches();
+    var pipelineName = getPipelineName(message);
 
     log.info("Starting field patching for document {} from pipeline '{}'", document.getId(), pipelineName);
 
-    if(patches.isEmpty()) {
-      log.info("Nothing to patch for document {} from pipeline '{}'", document.getId(), pipelineName);
+    try {
+      var pipeline = getPipelineDefinition(message);
+      var patches = pipeline.getPatches();
 
-      return MessageBuilder
-        .withPayload(document)
-        .copyHeaders(message.getHeaders())
-        .build();
-    } else {
-      try {
+      if (patches.isEmpty()) {
+        log.info("Nothing to patch for document {} from pipeline '{}'", document.getId(), pipelineName);
+
+        return MessageBuilder
+          .withPayload(document)
+          .copyHeaders(message.getHeaders())
+          .build();
+      } else {
         var patchedDocument = documentFieldPatchingService.applyPatches(document, pipeline.getPatches()).block();
 
-        if(patchedDocument != null) {
+        if (patchedDocument != null) {
           return MessageBuilder
             .withPayload(patchedDocument)
             .copyHeaders(message.getHeaders())
@@ -185,9 +183,9 @@ public class DocumentPollingIntegrationConfig {
         } else {
           log.error("Error when patching fields of document '{}' from pipeline '{}'", document.getId(), pipelineName);
         }
-      } catch (Exception e) {
-        log.error("Error processing field patches for document {} from pipeline '{}': {}", document.getId(), pipelineName, e.getMessage(), e);
       }
+    } catch (Exception e) {
+      log.error("Error processing field patches for document {} from pipeline '{}': {}", document.getId(), pipelineName, e.getMessage(), e);
     }
 
     unlockDocument(message);
@@ -197,8 +195,19 @@ public class DocumentPollingIntegrationConfig {
   @ServiceActivator(inputChannel = "finishedDocumentChannel")
   public void handleFinishedDocument(Message<Document> message) {
     var document = message.getPayload();
-    var pipeline = (PipelineConfiguration.PipelineDefinition) message.getHeaders().get("pipeline");
-    var pipelineName = (String) message.getHeaders().get("pipelineName");
+    var pipelineName = getPipelineName(message);
+
+    log.info("Starting saving of document {} from pipeline '{}'", document.getId(), pipelineName);
+
+    try {
+      var pipeline = getPipelineDefinition(message);
+
+      documentService.patch(document, pipeline.isRemoveInboxTags()).block();
+
+      log.info("Document '{}' from pipeline '{}' has been saved.", document.getId(), pipelineName);
+    } catch (Exception e) {
+      log.error("Error processing field patches for document {} from pipeline '{}': {}", document.getId(), pipelineName, e.getMessage(), e);
+    }
 
     unlockDocument(message);
   }
@@ -207,5 +216,21 @@ public class DocumentPollingIntegrationConfig {
     var lockedId = message.getPayload().getId();
 
     documentLockRegistry.unlock(lockedId);
+  }
+
+  private @NonNull PipelineConfiguration.PipelineDefinition getPipelineDefinition(@NonNull Message<?> message) {
+    if (message.getHeaders().get("pipeline") instanceof PipelineConfiguration.PipelineDefinition pipeline) {
+      return pipeline;
+    }
+
+    throw new IllegalArgumentException("Missing 'pipeline' header");
+  }
+
+  private String getPipelineName(@NonNull Message<?> message) {
+    if (message.getHeaders().get("pipelineName") instanceof String pipelineName) {
+      return pipelineName;
+    }
+
+    return null;
   }
 }

@@ -27,13 +27,18 @@ public interface DocumentMapper {
   @Mapping(target = "tags", source = "tags")
   Document toDto(@NonNull DocumentResponse response, Correspondent correspondent, @NonNull List<CustomField> customFields, @NonNull List<Tag> tags);
 
-  @Mapping(target = "title", source = "title")
-  @Mapping(target = "created", source = "createdDate")
-  @Mapping(target = "content", source = "content")
-  @Mapping(target = "correspondentId", source = "correspondent", qualifiedByName = "mapCorrespondent")
-  @Mapping(target = "customFields", source = "customFields", qualifiedByName = "mapCustomFields")
-  @Mapping(target = "tagIds", source = "tags", qualifiedByName = "mapTagIds")
-  DocumentPatchRequest toPatchRequest(@NonNull Document document);
+  @Mapping(target = "title", source = "document.title")
+  @Mapping(target = "created", source = "document.createdDate")
+  @Mapping(target = "content", source = "document.content")
+  @Mapping(target = "correspondentId", source = "document.correspondent", qualifiedByName = "mapCorrespondent")
+  @Mapping(target = "customFields", source = "document.customFields", qualifiedByName = "mapCustomFields")
+  @Mapping(target = "tagIds", source = "document.tags", qualifiedByName = "mapTagIds")
+  @Mapping(target = "removeInboxTags", source = "removeInboxTags")
+  DocumentPatchRequest toPatchRequest(@NonNull Document document, boolean removeInboxTags);
+
+  default DocumentPatchRequest toPatchRequest(@NonNull Document document) {
+    return toPatchRequest(document, false);
+  }
 
   @Named("mapCorrespondent")
   default Integer mapCorrespondent(Correspondent correspondent) {
