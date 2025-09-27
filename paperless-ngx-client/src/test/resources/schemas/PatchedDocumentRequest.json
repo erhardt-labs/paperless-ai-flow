@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/PatchedDocumentRequest.json",
+  "title": "PatchedDocumentRequest",
+  "type": "object",
+  "description": "Adds update nested feature",
+  "additionalProperties": false,
+  "properties": {
+    "correspondent": {
+      "type": ["integer", "null"]
+    },
+    "document_type": {
+      "type": ["integer", "null"]
+    },
+    "storage_path": {
+      "type": ["integer", "null"]
+    },
+    "title": {
+      "type": "string",
+      "title": "Titel",
+      "maxLength": 128
+    },
+    "content": {
+      "type": "string",
+      "title": "Inhalt",
+      "description": "Der Inhalt des Dokuments in Textform. Dieses Feld wird primär für die Suche verwendet."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "title": "Ausgestellt"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date",
+      "deprecated": true
+    },
+    "deleted_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "archive_serial_number": {
+      "type": ["integer", "null"],
+      "format": "int64",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "title": "Archiv-Seriennummer",
+      "description": "Die Position dieses Dokuments in Ihrem physischen Dokumentenarchiv."
+    },
+    "owner": {
+      "type": ["integer", "null"]
+    },
+    "set_permissions": {
+      "type": "object",
+      "writeOnly": true,
+      "additionalProperties": false,
+      "properties": {
+        "view": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "users": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "groups": {
+              "type": "array",
+              "items": { "type": "integer" }
+            }
+          }
+        },
+        "change": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "users": {
+              "type": "array",
+              "items": { "type": "integer" }
+            },
+            "groups": {
+              "type": "array",
+              "items": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "custom_fields": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CustomFieldInstanceRequest" }
+    },
+    "remove_inbox_tags": {
+      "type": ["boolean", "null"],
+      "writeOnly": true,
+      "default": false
+    }
+  },
+  "required": [],
+  "$defs": {
+    "CustomFieldInstanceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "description": "Given the *incoming* primitive data, return the value for this field that should be validated and transformed to a native value.",
+          "oneOf": [
+            { "type": ["string", "null"] },
+            { "type": ["integer", "null"] },
+            { "type": ["number", "null"], "format": "double" },
+            {
+              "type": ["object", "null"],
+              "additionalProperties": {}
+            }
+          ]
+        },
+        "field": {
+          "type": "integer"
+        }
+      },
+      "required": ["field", "value"]
+    }
+  }
+}
