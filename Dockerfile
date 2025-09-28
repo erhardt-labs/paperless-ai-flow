@@ -35,7 +35,7 @@ COPY --from=build /app/app/target/*.jar app.jar
 COPY /app/src/main/resources/application.yaml /app/config/application.yaml
 
 # Allow passing extra JVM options at runtime
-ENV JAVA_OPTS="-Dspring.config.location=file:/app/config/application.yaml"
+ENV JAVA_OPTS="-Dspring.config.location=file:/app/config/application.yaml -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=25.0 -XX:+ExitOnOutOfMemoryError"
 
 # Run as non-root
 USER 1000:1000
