@@ -126,14 +126,14 @@ class DocumentMapperTest extends AbstractDocumentPatchRequestTest {
     var document = documentBuilder.build();
 
     // --- Act: Map Document to DocumentPatchRequest ---
-    var patchRequest = documentMapper.toPatchRequest(document);
+    var patchRequest = documentMapper.toPatchRequest(document, true);
     var node = toJson(patchRequest);
 
     // --- Schema validation ---
     assertSchemaValid(node);
 
     // --- remove_inbox_tags check (always present with default false) ---
-    assertRemoveInboxTags(node, false);
+    assertRemoveInboxTags(node, true);
 
     // --- Field presence: exactly the selected ones, with correct JSON names ---
     var expectedKeys = getExpectedKeysForDocument(fields);

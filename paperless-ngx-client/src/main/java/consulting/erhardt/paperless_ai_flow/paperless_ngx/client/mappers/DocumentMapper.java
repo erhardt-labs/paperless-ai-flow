@@ -56,6 +56,7 @@ public interface DocumentMapper {
     }
 
     return customFields.stream()
+      .filter(cf -> cf.getValue() != null)
       .collect(Collectors.toMap(
         CustomField::getId,
         CustomField::getValue,
