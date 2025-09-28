@@ -54,15 +54,15 @@ public class DocumentMetadataExtractionService {
     log.info("Starting parallel metadata extraction for document content (length: {})", content.length());
 
     // Run AI extractions in parallel when enabled
-    var titleMono = extraction.isTitle() ?
+    var titleMono = extraction.getTitle() ?
       extractTitle(content, extraction) : Mono.just(Optional.empty());
-    var createdDateMono = extraction.isCreatedDate() ?
+    var createdDateMono = extraction.getCreatedDate() ?
       extractCreatedDate(content, extraction) : Mono.just(Optional.empty());
-    var tagsMono = extraction.isTags() ?
+    var tagsMono = extraction.getTags() ?
       extractTags(content, extraction) : Mono.just(Optional.empty());
-    var correspondentMono = extraction.isCorrespondent() ?
+    var correspondentMono = extraction.getCorrespondent() ?
       extractCorrespondent(content, extraction) : Mono.just(Optional.empty());
-    var customFieldsMono = extraction.isCustomFields() ?
+    var customFieldsMono = extraction.getCustomFields() ?
       extractCustomFields(content, extraction) : Mono.just(Optional.empty());
 
     return Mono.zip(titleMono, createdDateMono, tagsMono, correspondentMono, customFieldsMono)

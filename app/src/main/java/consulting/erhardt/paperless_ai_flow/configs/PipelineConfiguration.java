@@ -115,23 +115,23 @@ public class PipelineConfiguration {
   @Builder
   public static class ExtractionConfiguration {
     @Builder.Default
-    boolean title = true;
+    Boolean title = true;
     String titlePrompt;
 
     @Builder.Default
-    boolean createdDate = true;
+    Boolean createdDate = true;
     String createdDatePrompt;
 
     @Builder.Default
-    boolean correspondent = true;
+    Boolean correspondent = true;
     String correspondentPrompt;
 
     @Builder.Default
-    boolean tags = true;
+    Boolean tags = true;
     String tagsPrompt;
 
     @Builder.Default
-    boolean customFields = true;
+    Boolean customFields = true;
     String customFieldsPrompt;
   }
 
