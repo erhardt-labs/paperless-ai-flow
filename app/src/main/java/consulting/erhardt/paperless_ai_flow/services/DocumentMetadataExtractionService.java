@@ -75,16 +75,30 @@ public class DocumentMetadataExtractionService {
 
         // create builder object
         var documentBuilder = document.toBuilder();
-        title.ifPresent(documentBuilder::title);
-        createdDate.ifPresent(documentBuilder::createdDate);
-        correspondentOpt.ifPresent(documentBuilder::correspondent);
-        tagsOpt.ifPresent(documentBuilder::tags);
-        customFieldsOpt.ifPresent(documentBuilder::customFields);
+        title.ifPresent(t -> {
+          log.info("Document {}: extracted title: '{}'", document.getId(), t);
+          documentBuilder.title(t);
+        });
+        createdDate.ifPresent(cd -> {
+          log.info("Document {}: extracted created date: '{}'", document.getId(), cd);
+          documentBuilder.createdDate(cd);
+        });
+        correspondentOpt.ifPresent(c -> {
+          log.info("Document {}: extracted correspondent: '{}'", document.getId(), c.getName());
+          documentBuilder.correspondent(c);
+        });
+        tagsOpt.ifPresent(t -> {
+          log.info("Document {}: extracted tags: '{}'", document.getId(), t.stream().map(Tag::getName).toList());
+          documentBuilder.tags(t);
+        });
+        customFieldsOpt.ifPresent(cfs -> {
+          log.info("Document {}: extracted custom fields: '{}'", document.getId(), cfs.stream().map(cf -> cf.getName() + " -> " + cf.getValue()).toList());
+          documentBuilder.customFields(cfs);
+        });
 
         // build
         var updatedDocument = documentBuilder.build();
-        log.info("Metadata extraction completed - Title: '{}', Created date: {}, Tags: {}, Correspondent: {}, Custom fields: {}",
-          updatedDocument.getTitle(), updatedDocument.getCreatedDate(), updatedDocument.getTags(), updatedDocument.getCorrespondent(), updatedDocument.getCustomFields());
+        log.info("Document {}: Metadata extraction completed", document.getId());
 
         return updatedDocument;
       });
