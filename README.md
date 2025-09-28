@@ -56,7 +56,7 @@ docker run -d \
   -e PAPERLESS_BASE_URL=https://your-paperless-instance.com \
   -e PAPERLESS_TOKEN=your-api-token \
   -e OPENAI_API_KEY=your-openai-key \
-  -v $(pwd)/config.yml:/app/config/application.yml \
+  -v $(pwd)/config.yml:/app/config/application.yaml \
   erhardt-labs/paperless-ai-flow:latest
 ```
 
@@ -71,7 +71,7 @@ java -jar app/target/paperless-ai-flow-*.jar
 
 ### Configuration
 
-Create an `application.yml` file:
+Create an `application.yaml` file:
 
 ```yaml
 spring:
