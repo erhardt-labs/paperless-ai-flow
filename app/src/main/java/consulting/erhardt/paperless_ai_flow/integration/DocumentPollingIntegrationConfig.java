@@ -1,7 +1,9 @@
 package consulting.erhardt.paperless_ai_flow.integration;
 
 import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
+import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.DocumentService;
 import consulting.erhardt.paperless_ai_flow.services.*;
 import lombok.NonNull;
@@ -17,6 +19,10 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableIntegration
@@ -90,7 +96,7 @@ public class DocumentPollingIntegrationConfig {
     var document = message.getPayload();
     var pipelineName = getPipelineName(message);
 
-    log.info("Processing OCR for document {} from pipeline '{}'", document.getId(), pipelineName);
+    log.info("Pipeline '{}': Processing OCR {}", pipelineName, prettyPrintDocument(document));
 
     try {
       var pipeline = getPipelineDefinition(message);
@@ -129,8 +135,7 @@ public class DocumentPollingIntegrationConfig {
     var document = message.getPayload();
     var pipelineName = getPipelineName(message);
 
-    log.info("Starting metadata extraction for document {} from pipeline '{}'",
-      document.getId(), pipelineName);
+    log.info("Pipeline '{}': Metadata extracting {}", pipelineName, prettyPrintDocument(document));
 
     try {
       var pipeline = getPipelineDefinition(message);
@@ -159,7 +164,7 @@ public class DocumentPollingIntegrationConfig {
     var document = message.getPayload();
     var pipelineName = getPipelineName(message);
 
-    log.info("Starting field patching for document {} from pipeline '{}'", document.getId(), pipelineName);
+    log.info("Pipeline '{}': Field patching {}", pipelineName, prettyPrintDocument(document));
 
     try {
       var pipeline = getPipelineDefinition(message);
@@ -197,7 +202,7 @@ public class DocumentPollingIntegrationConfig {
     var document = message.getPayload();
     var pipelineName = getPipelineName(message);
 
-    log.info("Starting saving of document {} from pipeline '{}'", document.getId(), pipelineName);
+    log.info("Pipeline '{}': Saving {}", pipelineName, prettyPrintDocument(document));
 
     try {
       var pipeline = getPipelineDefinition(message);
@@ -232,5 +237,37 @@ public class DocumentPollingIntegrationConfig {
     }
 
     return null;
+  }
+
+  public String prettyPrintDocument(@NonNull Document doc) {
+    var tagsString = Optional.ofNullable(doc.getTags())
+      .orElseGet(List::of)
+      .stream()
+      .map(Tag::getName)
+      .collect(Collectors.joining(", "));
+
+    var customFieldsString = Optional.ofNullable(doc.getCustomFields())
+      .orElseGet(List::of)
+      .stream()
+      .map(cf -> cf.getName() + " -> " + cf.getValue())
+      .collect(Collectors.joining(", "));
+
+    var correspondentName = Optional.ofNullable(doc.getCorrespondent())
+      .map(Correspondent::getName)
+      .orElse("n/a");
+
+    var createdDate = Optional.ofNullable(doc.getCreatedDate())
+      .map(Object::toString)
+      .orElse("n/a");
+
+    return String.format(
+      "Document '%d': Title: %s - Correspondent: %s - Created date: %s - Tags: %s - Custom fields: %s",
+      doc.getId(),
+      Optional.ofNullable(doc.getTitle()).orElse("n/a"),
+      correspondentName,
+      createdDate,
+      tagsString,
+      customFieldsString
+    );
   }
 }
