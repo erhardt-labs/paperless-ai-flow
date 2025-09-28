@@ -26,7 +26,7 @@
     <mapstruct.version>1.6.3</mapstruct.version>
     <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     <wiremock-spring-boot.version>3.10.6</wiremock-spring-boot.version>
-    <maven-surefire.version>3.5.3</maven-surefire.version>
+    <maven-surefire.version>3.5.4</maven-surefire.version>
     <maven-dependency.version>3.8.1</maven-dependency.version>
   </properties>
 
