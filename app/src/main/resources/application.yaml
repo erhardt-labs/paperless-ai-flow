@@ -13,25 +13,7 @@ paperless:
   api:
     base-url: ${PAPERLESS_BASE_URL}
     token: ${PAPERLESS_TOKEN}
-  pipelines:
-    - name: rechnungen_de
-      selector:
-        required-tags: ["ocr-manual"]
-      polling:
-        interval: 30s
-        enabled: true
-      ocr:
-        model: openai/gpt-4o
-      patches:
-        - action: add
-          type: tag
-          name: erhardt consulting
-        - action: add
-          type: tag
-          name: ocr-manual
-        - action: add
-          type: tag
-          name: Eingang
+  pipelines: []
 
 logging:
   level:
