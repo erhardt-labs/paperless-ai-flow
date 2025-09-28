@@ -1,7 +1,6 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.mappers.AbstractDocumentPatchRequestTest;
 import lombok.NonNull;
 import org.junit.jupiter.api.DisplayName;
@@ -10,11 +9,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.LocalDate;
-import java.util.EnumSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -23,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Parameterized tests for verifying JSON serialization of DocumentPatchRequest
  * against the provided JSON schema with all field combinations.
- *
+ * <p>
  * Guarantees:
  * 1) Serialized JSON conforms to the schema.
  * 2) Only non-null fields are present (nulls omitted).
@@ -32,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class DocumentPatchRequestTest extends AbstractDocumentPatchRequestTest {
 
-  /** All optional data-bearing fields (remove_inbox_tags is handled separately). */
+  /**
+   * All optional data-bearing fields (remove_inbox_tags is handled separately).
+   */
   enum F {
     TITLE, CREATED, CONTENT, CORRESPONDENT, TAGS, CUSTOM_FIELDS
   }

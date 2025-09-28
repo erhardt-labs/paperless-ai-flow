@@ -12,5 +12,6 @@ public interface CustomFieldMapper {
   @Mapping(target = "name", source = "name")
   @Mapping(target = "dataType", source = "dataType")
   @Mapping(target = "extraData", source = "extraData")
+  @Mapping(target = "value", ignore = true)
   CustomField toDto(CustomFieldResponse tagResponse);
 }

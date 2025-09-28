@@ -1,9 +1,7 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services;
 
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.PaperlessNgxApiClient;
-import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
-import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Tag;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.CustomFieldResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.PagedResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.mappers.CustomFieldMapper;

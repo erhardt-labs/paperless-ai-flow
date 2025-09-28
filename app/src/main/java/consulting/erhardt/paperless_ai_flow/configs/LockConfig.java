@@ -1,6 +1,6 @@
 package consulting.erhardt.paperless_ai_flow.configs;
 
-import consulting.erhardt.paperless_ai_flow.app.service.IdLockRegistryService;
+import consulting.erhardt.paperless_ai_flow.services.IdLockRegistryService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

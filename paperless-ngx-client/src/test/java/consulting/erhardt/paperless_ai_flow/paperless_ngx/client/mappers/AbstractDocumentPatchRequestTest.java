@@ -11,7 +11,6 @@ import com.networknt.schema.ValidationMessage;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.DocumentPatchRequest;
 import org.junit.jupiter.api.BeforeAll;
 
-import java.io.InputStream;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -40,7 +39,9 @@ public abstract class AbstractDocumentPatchRequestTest {
     }
   }
 
-  /** Serialize a request and return the parsed ObjectNode. */
+  /**
+   * Serialize a request and return the parsed ObjectNode.
+   */
   protected static ObjectNode toJson(DocumentPatchRequest req) throws JsonProcessingException {
     var json = MAPPER.writeValueAsString(req);
     var node = MAPPER.readTree(json);
@@ -48,21 +49,27 @@ public abstract class AbstractDocumentPatchRequestTest {
     return (ObjectNode) node;
   }
 
-  /** Validate against schema. */
+  /**
+   * Validate against schema.
+   */
   protected static void assertSchemaValid(ObjectNode node) {
     Set<ValidationMessage> errors = SCHEMA.validate(node);
     assertTrue(errors.isEmpty(), () -> "Schema violations:\n" + String.join("\n",
       errors.stream().map(ValidationMessage::toString).toList()));
   }
 
-  /** Assert JSON has exactly expected keys (no more, no less). */
+  /**
+   * Assert JSON has exactly expected keys (no more, no less).
+   */
   protected static void assertExactFields(ObjectNode node, Set<String> expectedKeys) {
     var actual = new LinkedHashSet<String>();
     node.fieldNames().forEachRemaining(actual::add);
     assertEquals(expectedKeys, actual, "JSON must contain exactly the expected fields");
   }
 
-  /** Always required checks for remove_inbox_tags. */
+  /**
+   * Always required checks for remove_inbox_tags.
+   */
   protected static void assertRemoveInboxTags(ObjectNode node, boolean expectedValue) {
     assertTrue(node.has("remove_inbox_tags"), "'remove_inbox_tags' must be present");
     assertTrue(node.get("remove_inbox_tags").isBoolean(), "'remove_inbox_tags' must be boolean");

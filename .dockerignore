@@ -62,4 +62,4 @@ coverage/
 # Application-specific
 application-local.yml
 application-dev.yml
-config/local/
+configs/local/

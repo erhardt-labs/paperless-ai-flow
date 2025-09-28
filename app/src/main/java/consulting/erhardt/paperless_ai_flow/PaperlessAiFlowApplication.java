@@ -1,6 +1,6 @@
 package consulting.erhardt.paperless_ai_flow;
 
-import consulting.erhardt.paperless_ai_flow.app.config.PipelineConfiguration;
+import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

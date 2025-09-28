@@ -36,15 +36,15 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @SpringBootTest(classes = TestPaperlessNgxHttpClientConfig.class)
 @TestPropertySource(properties = {
-    "paperless.api.base-url=http://localhost:8089",
-    "paperless.api.token=test-token"
+  "paperless.api.base-url=http://localhost:8089",
+  "paperless.api.token=test-token"
 })
 class DocumentServiceWireMockTest {
 
   @RegisterExtension
   static WireMockExtension wireMockExtension = WireMockExtension.newInstance()
-      .options(wireMockConfig().port(8089))
-      .build();
+    .options(wireMockConfig().port(8089))
+    .build();
 
   @Autowired
   private PaperlessNgxApiClient apiClient;
@@ -78,56 +78,56 @@ class DocumentServiceWireMockTest {
     // Given
     var documentId = 123;
     var document = Document.builder()
-        .id(documentId)
-        .title("Updated Test Document")
-        .content("Updated content for testing")
-        .createdDate(LocalDate.of(2024, 1, 15))
-        .correspondent(Correspondent.builder()
-            .id(1)
-            .name("Test Correspondent")
-            .slug("test-correspondent")
-            .build())
-        .tags(List.of(
-            Tag.builder().id(1).name("Important").slug("important").build(),
-            Tag.builder().id(2).name("Personal").slug("personal").build()
-        ))
-        .customFields(List.of(
-            CustomField.builder()
-                .id(1)
-                .name("Priority")
-                .dataType("string")
-                .value("High")
-                .build()
-        ))
-        .build();
+      .id(documentId)
+      .title("Updated Test Document")
+      .content("Updated content for testing")
+      .createdDate(LocalDate.of(2024, 1, 15))
+      .correspondent(Correspondent.builder()
+        .id(1)
+        .name("Test Correspondent")
+        .slug("test-correspondent")
+        .build())
+      .tags(List.of(
+        Tag.builder().id(1).name("Important").slug("important").build(),
+        Tag.builder().id(2).name("Personal").slug("personal").build()
+      ))
+      .customFields(List.of(
+        CustomField.builder()
+          .id(1)
+          .name("Priority")
+          .dataType("string")
+          .value("High")
+          .build()
+      ))
+      .build();
 
     var expectedResponse = """
-        {
-          "id": 123,
-          "title": "Updated Test Document",
-          "content": "Updated content for testing",
-          "created": "2024-01-15",
-          "correspondent": 1,
-          "tags": [1, 2],
-          "custom_fields": [
-            {
-              "field": 1,
-              "value": "High"
-            }
-          ]
-        }
-        """;
+      {
+        "id": 123,
+        "title": "Updated Test Document",
+        "content": "Updated content for testing",
+        "created": "2024-01-15",
+        "correspondent": 1,
+        "tags": [1, 2],
+        "custom_fields": [
+          {
+            "field": 1,
+            "value": "High"
+          }
+        ]
+      }
+      """;
 
     // Setup mapper mock
     var patchRequest = DocumentPatchRequest.builder()
-        .title("Updated Test Document")
-        .content("Updated content for testing")
-        .created(LocalDate.of(2024, 1, 15))
-        .correspondentId(1)
-        .tagIds(List.of(1, 2))
-        .customFields(Map.of(1, "High"))
-        .removeInboxTags(false)
-        .build();
+      .title("Updated Test Document")
+      .content("Updated content for testing")
+      .created(LocalDate.of(2024, 1, 15))
+      .correspondentId(1)
+      .tagIds(List.of(1, 2))
+      .customFields(Map.of(1, "High"))
+      .removeInboxTags(false)
+      .build();
 
     when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
 
@@ -140,22 +140,22 @@ class DocumentServiceWireMockTest {
 
     // Set up WireMock to validate request schema compliance
     wireMockExtension.stubFor(patch(urlEqualTo("/api/documents/123/"))
-        .withRequestBody(matchingJsonSchema(loadSchema()))
-        .withHeader("Authorization", equalTo("Token test-token"))
-        .withHeader("Content-Type", containing("application/json"))
-        .willReturn(aResponse()
-            .withStatus(200)
-            .withHeader("Content-Type", "application/json")
-            .withBody(expectedResponse)));
+      .withRequestBody(matchingJsonSchema(loadSchema()))
+      .withHeader("Authorization", equalTo("Token test-token"))
+      .withHeader("Content-Type", containing("application/json"))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withHeader("Content-Type", "application/json")
+        .withBody(expectedResponse)));
 
     // When & Then
     StepVerifier.create(documentService.patch(document, false))
-        .expectNextMatches(updatedDoc ->
-            updatedDoc.getId().equals(documentId) &&
-            "Updated Test Document".equals(updatedDoc.getTitle()) &&
-            "Updated content for testing".equals(updatedDoc.getContent()) &&
-            LocalDate.of(2024, 1, 15).equals(updatedDoc.getCreatedDate()))
-        .verifyComplete();
+      .expectNextMatches(updatedDoc ->
+        updatedDoc.getId().equals(documentId) &&
+          "Updated Test Document".equals(updatedDoc.getTitle()) &&
+          "Updated content for testing".equals(updatedDoc.getContent()) &&
+          LocalDate.of(2024, 1, 15).equals(updatedDoc.getCreatedDate()))
+      .verifyComplete();
 
     // Verify the request was made correctly
     wireMockExtension.verify(exactly(1), patchRequestedFor(urlEqualTo("/api/documents/123/")));
@@ -166,61 +166,61 @@ class DocumentServiceWireMockTest {
     // Given
     var documentId = 456;
     var document = Document.builder()
-        .id(documentId)
-        .title("Another Test Document")
-        .content("Test content")
-        .createdDate(LocalDate.of(2024, 2, 20))
-        .build();
+      .id(documentId)
+      .title("Another Test Document")
+      .content("Test content")
+      .createdDate(LocalDate.of(2024, 2, 20))
+      .build();
 
     var expectedResponse = """
-        {
-          "id": 456,
-          "title": "Another Test Document",
-          "content": "Test content",
-          "created": "2024-02-20",
-          "correspondent": null,
-          "tags": [],
-          "custom_fields": []
-        }
-        """;
+      {
+        "id": 456,
+        "title": "Another Test Document",
+        "content": "Test content",
+        "created": "2024-02-20",
+        "correspondent": null,
+        "tags": [],
+        "custom_fields": []
+      }
+      """;
 
     // Setup mapper mock
     var patchRequest = DocumentPatchRequest.builder()
-        .title("Another Test Document")
-        .content("Test content")
-        .created(LocalDate.of(2024, 2, 20))
-        .removeInboxTags(false)
-        .build();
+      .title("Another Test Document")
+      .content("Test content")
+      .created(LocalDate.of(2024, 2, 20))
+      .removeInboxTags(false)
+      .build();
 
     when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Set up WireMock with custom request matcher
     wireMockExtension.stubFor(patch(urlEqualTo("/api/documents/456/"))
-        .withRequestBody(matchingJsonPath("$.title", equalTo("Another Test Document")))
-        .withRequestBody(matchingJsonPath("$.content", equalTo("Test content")))
-        .withRequestBody(matchingJsonPath("$.created", equalTo("2024-02-20")))
-        .withRequestBody(matchingJsonPath("$.remove_inbox_tags", equalTo("false")))
-        .withHeader("Authorization", equalTo("Token test-token"))
-        .willReturn(aResponse()
-            .withStatus(200)
-            .withHeader("Content-Type", "application/json")
-            .withBody(expectedResponse)));
+      .withRequestBody(matchingJsonPath("$.title", equalTo("Another Test Document")))
+      .withRequestBody(matchingJsonPath("$.content", equalTo("Test content")))
+      .withRequestBody(matchingJsonPath("$.created", equalTo("2024-02-20")))
+      .withRequestBody(matchingJsonPath("$.remove_inbox_tags", equalTo("false")))
+      .withHeader("Authorization", equalTo("Token test-token"))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withHeader("Content-Type", "application/json")
+        .withBody(expectedResponse)));
 
     // When & Then
     StepVerifier.create(documentService.patch(document, false))
-        .expectNextMatches(updatedDoc ->
-            updatedDoc.getId().equals(documentId) &&
-            "Another Test Document".equals(updatedDoc.getTitle()))
-        .verifyComplete();
+      .expectNextMatches(updatedDoc ->
+        updatedDoc.getId().equals(documentId) &&
+          "Another Test Document".equals(updatedDoc.getTitle()))
+      .verifyComplete();
 
     // Verify the exact request structure
     wireMockExtension.verify(patchRequestedFor(urlEqualTo("/api/documents/456/"))
-        .withRequestBody(matchingJsonPath("$.title"))
-        .withRequestBody(matchingJsonPath("$.content"))
-        .withRequestBody(matchingJsonPath("$.created"))
-        .withRequestBody(matchingJsonPath("$.remove_inbox_tags"))
-        .withHeader("Authorization", equalTo("Token test-token")));
+      .withRequestBody(matchingJsonPath("$.title"))
+      .withRequestBody(matchingJsonPath("$.content"))
+      .withRequestBody(matchingJsonPath("$.created"))
+      .withRequestBody(matchingJsonPath("$.remove_inbox_tags"))
+      .withHeader("Authorization", equalTo("Token test-token")));
   }
 
   @Test
@@ -228,50 +228,50 @@ class DocumentServiceWireMockTest {
     // Given
     var documentId = 789;
     var customFields = List.of(
-        CustomField.builder()
-            .id(1)
-            .name("StringField")
-            .dataType("string")
-            .value("String Value")
-            .build(),
-        CustomField.builder()
-            .id(2)
-            .name("IntegerField")
-            .dataType("integer")
-            .value("42")
-            .build(),
-        CustomField.builder()
-            .id(3)
-            .name("NumberField")
-            .dataType("number")
-            .value("3.14")
-            .build()
+      CustomField.builder()
+        .id(1)
+        .name("StringField")
+        .dataType("string")
+        .value("String Value")
+        .build(),
+      CustomField.builder()
+        .id(2)
+        .name("IntegerField")
+        .dataType("integer")
+        .value("42")
+        .build(),
+      CustomField.builder()
+        .id(3)
+        .name("NumberField")
+        .dataType("number")
+        .value("3.14")
+        .build()
     );
 
     var document = Document.builder()
-        .id(documentId)
-        .title("Complex Custom Fields Test")
-        .customFields(customFields)
-        .build();
+      .id(documentId)
+      .title("Complex Custom Fields Test")
+      .customFields(customFields)
+      .build();
 
     var expectedResponse = """
-        {
-          "id": 789,
-          "title": "Complex Custom Fields Test",
-          "custom_fields": [
-            {"field": 1, "value": "String Value"},
-            {"field": 2, "value": "42"},
-            {"field": 3, "value": "3.14"}
-          ]
-        }
-        """;
+      {
+        "id": 789,
+        "title": "Complex Custom Fields Test",
+        "custom_fields": [
+          {"field": 1, "value": "String Value"},
+          {"field": 2, "value": "42"},
+          {"field": 3, "value": "3.14"}
+        ]
+      }
+      """;
 
     // Setup mapper mock
     var patchRequest = DocumentPatchRequest.builder()
-        .title("Complex Custom Fields Test")
-        .customFields(Map.of(1, "String Value", 2, "42", 3, "3.14"))
-        .removeInboxTags(false)
-        .build();
+      .title("Complex Custom Fields Test")
+      .customFields(Map.of(1, "String Value", 2, "42", 3, "3.14"))
+      .removeInboxTags(false)
+      .build();
 
     when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
 
@@ -283,21 +283,21 @@ class DocumentServiceWireMockTest {
 
     // Verify custom fields are serialized as array format - use individual matchers since order may vary
     wireMockExtension.stubFor(patch(urlEqualTo("/api/documents/789/"))
-        .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 1)].value", equalTo("String Value")))
-        .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 2)].value", equalTo("42")))
-        .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 3)].value", equalTo("3.14")))
-        .withRequestBody(matchingJsonPath("$.custom_fields.length()", equalTo("3")))
-        .willReturn(aResponse()
-            .withStatus(200)
-            .withHeader("Content-Type", "application/json")
-            .withBody(expectedResponse)));
+      .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 1)].value", equalTo("String Value")))
+      .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 2)].value", equalTo("42")))
+      .withRequestBody(matchingJsonPath("$.custom_fields[?(@.field == 3)].value", equalTo("3.14")))
+      .withRequestBody(matchingJsonPath("$.custom_fields.length()", equalTo("3")))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withHeader("Content-Type", "application/json")
+        .withBody(expectedResponse)));
 
     // When & Then
     StepVerifier.create(documentService.patch(document, false))
-        .expectNextMatches(updatedDoc ->
-            updatedDoc.getId().equals(documentId) &&
-            updatedDoc.getCustomFields().size() == 3)
-        .verifyComplete();
+      .expectNextMatches(updatedDoc ->
+        updatedDoc.getId().equals(documentId) &&
+          updatedDoc.getCustomFields().size() == 3)
+      .verifyComplete();
   }
 
   @Test
@@ -305,44 +305,44 @@ class DocumentServiceWireMockTest {
     // Given
     var documentId = 999;
     var document = Document.builder()
-        .id(documentId)
-        .title("Minimal Document")
-        .build();
+      .id(documentId)
+      .title("Minimal Document")
+      .build();
 
     var expectedResponse = """
-        {
-          "id": 999,
-          "title": "Minimal Document",
-          "correspondent": null,
-          "tags": [],
-          "custom_fields": []
-        }
-        """;
+      {
+        "id": 999,
+        "title": "Minimal Document",
+        "correspondent": null,
+        "tags": [],
+        "custom_fields": []
+      }
+      """;
 
     // Setup mapper mock
     var patchRequest = DocumentPatchRequest.builder()
-        .title("Minimal Document")
-        .removeInboxTags(false)
-        .build();
+      .title("Minimal Document")
+      .removeInboxTags(false)
+      .build();
 
     when(documentMapper.toPatchRequest(document, false)).thenReturn(patchRequest);
     when(documentMapper.toDto(any(DocumentResponse.class), any(), any(), any())).thenReturn(document);
 
     // Verify null/empty fields are handled correctly
     wireMockExtension.stubFor(patch(urlEqualTo("/api/documents/999/"))
-        .withRequestBody(matchingJsonPath("$.title", equalTo("Minimal Document")))
-        .withRequestBody(matchingJsonPath("$.remove_inbox_tags", equalTo("false")))
-        .willReturn(aResponse()
-            .withStatus(200)
-            .withHeader("Content-Type", "application/json")
-            .withBody(expectedResponse)));
+      .withRequestBody(matchingJsonPath("$.title", equalTo("Minimal Document")))
+      .withRequestBody(matchingJsonPath("$.remove_inbox_tags", equalTo("false")))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withHeader("Content-Type", "application/json")
+        .withBody(expectedResponse)));
 
     // When & Then
     StepVerifier.create(documentService.patch(document, false))
-        .expectNextMatches(updatedDoc ->
-            updatedDoc.getId().equals(documentId) &&
-            "Minimal Document".equals(updatedDoc.getTitle()))
-        .verifyComplete();
+      .expectNextMatches(updatedDoc ->
+        updatedDoc.getId().equals(documentId) &&
+          "Minimal Document".equals(updatedDoc.getTitle()))
+      .verifyComplete();
   }
 
   private String loadSchema() throws IOException {

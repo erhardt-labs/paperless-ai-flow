@@ -1,7 +1,6 @@
 package consulting.erhardt.paperless_ai_flow.paperless_ngx.client.mappers;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Correspondent;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.CustomField;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
@@ -15,11 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDate;
-import java.util.EnumSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -28,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Parameterized tests for verifying the DocumentMapper.toPatchRequest() mapping function
  * against the provided JSON schema with all field combinations.
- *
+ * <p>
  * Guarantees:
  * 1) Mapped DocumentPatchRequest serialized JSON conforms to the schema.
  * 2) Only non-null fields from Document are present (nulls omitted).
@@ -41,7 +36,9 @@ class DocumentMapperTest extends AbstractDocumentPatchRequestTest {
   @Autowired
   private DocumentMapper documentMapper;
 
-  /** All optional data-bearing fields from Document DTO. */
+  /**
+   * All optional data-bearing fields from Document DTO.
+   */
   enum F {
     TITLE, CREATED_DATE, CONTENT, CORRESPONDENT, TAGS, CUSTOM_FIELDS
   }
