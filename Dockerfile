@@ -27,11 +27,15 @@ FROM docker.io/library/eclipse-temurin:21-jre@sha256:9dc74491b9c961b24cd16939b26
 # Set working directory
 WORKDIR /app
 
+# Create config directory
+RUN mkdir -p /app/config
+
 # Copy the built JAR from builder stage
 COPY --from=build /app/app/target/*.jar app.jar
+COPY /app/src/main/resources/application.yaml /app/config/application.yaml
 
 # Allow passing extra JVM options at runtime
-ENV JAVA_OPTS=""
+ENV JAVA_OPTS="-Dspring.config.location=file:/app/config/application.yaml"
 
 # Run as non-root
 USER 1000:1000
