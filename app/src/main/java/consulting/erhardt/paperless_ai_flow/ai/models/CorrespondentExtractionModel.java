@@ -27,7 +27,7 @@ public class CorrespondentExtractionModel extends AbstractAiModel<CorrespondentE
 
   @Override
   protected String getDefaultSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/correspondent.md");
+    return FileUtils.readFileFromResources("prompts/correspondent.txt");
   }
 
   @Override

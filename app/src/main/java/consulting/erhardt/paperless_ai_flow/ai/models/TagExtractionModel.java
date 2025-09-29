@@ -26,7 +26,7 @@ public class TagExtractionModel extends AbstractAiModel<TagsExtraction> {
 
   @Override
   protected String getDefaultSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/tags.md");
+    return FileUtils.readFileFromResources("prompts/tags.txt");
   }
 
   @Override

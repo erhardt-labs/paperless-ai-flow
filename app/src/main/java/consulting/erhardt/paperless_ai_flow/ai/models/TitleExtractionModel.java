@@ -20,7 +20,7 @@ public class TitleExtractionModel extends AbstractAiModel<TitleExtraction> {
 
   @Override
   protected String getDefaultSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/title.md");
+    return FileUtils.readFileFromResources("prompts/title.txt");
   }
 
   @Override

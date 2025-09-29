@@ -44,7 +44,7 @@ public class PdfOcrService {
     var ocrConfig = pipelineDefinition.getOcr();
     var prompt = Objects.requireNonNullElse(
       ocrConfig.getPrompt(),
-      FileUtils.readFileFromResources("prompts/ocr.md")
+      FileUtils.readFileFromResources("prompts/ocr.txt")
     );
 
     log.info("Processing document {} with OCR model: {}", documentId, ocrConfig.getModel());

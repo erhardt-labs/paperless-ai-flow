@@ -20,7 +20,7 @@ public class CreatedDateExtractionModel extends AbstractAiModel<CreatedDateExtra
 
   @Override
   protected String getDefaultSystemPrompt() throws IOException {
-    return FileUtils.readFileFromResources("prompts/created-date.md");
+    return FileUtils.readFileFromResources("prompts/created-date.txt");
   }
 
   @Override
