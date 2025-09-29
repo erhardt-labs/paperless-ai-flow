@@ -25,15 +25,14 @@ If type == "monetary":
   - If no currency is found or inferable, use Format A (amount only)
   - Use one of:
       - Format A: "^\d+(\.\d{1,2})?$"
-      - Format B: "^[A-Z]{3} \d+(\.\d{1,2})?$"
-  - Format B must use exactly one space between currency code and amount
+      - Format B: "^[A-Z]{3}-?\d+(\.\d{1,2})$"
+  - Format B must use exactly no other character between currency code and amount (e.g. "USD123.45")
   - Decimal separator must be "."
   - No commas, spaces, or symbols as thousand separators
   - Amount must be non-negative
   - No extra text, no currency symbols, no trailing labels
   - No leading/trailing whitespace
   - Max 2 decimal digits; integer part ≤ 63 digits
-  - If the value does not match formatting or validation, skip field
 
 If type == "date":
   - Extract using format "YYYY-MM-DD" only
@@ -59,7 +58,7 @@ Output examples:
 
 Valid:
 {
-  "customFields": [ { "key": 1, "value": "CHF 99.00" } ]
+  "customFields": [ { "key": 1, "value": "CHF99.00" } ]
 }
 
 Valid:
