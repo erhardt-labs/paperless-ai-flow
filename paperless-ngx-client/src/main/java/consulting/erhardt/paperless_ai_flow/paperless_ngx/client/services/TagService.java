@@ -65,13 +65,13 @@ public class TagService extends AbstractReactivePagedService<TagResponse, Tag> {
 
   @Override
   protected Mono<PagedResponse<TagResponse>> fetchPage(int page) {
-    log.info("Fetching tags page={}", page);
+    log.debug("Fetching tags page={}", page);
     return webClient.getTagsByPage(page);
   }
 
   @Override
   protected Mono<TagResponse> fetchById(int id) {
-    log.info("Fetching tag by id={}", id);
+    log.debug("Fetching tag by id={}", id);
     return webClient.getTag(id);
   }
 

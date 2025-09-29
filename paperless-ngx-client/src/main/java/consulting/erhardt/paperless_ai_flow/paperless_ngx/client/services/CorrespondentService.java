@@ -45,13 +45,13 @@ public class CorrespondentService extends AbstractReactivePagedService<Correspon
 
   @Override
   protected Mono<PagedResponse<CorrespondentResponse>> fetchPage(int page) {
-    log.info("Fetching correspondents page={}", page);
+    log.debug("Fetching correspondents page={}", page);
     return webClient.getCorrespondentsByPage(page);
   }
 
   @Override
   protected Mono<CorrespondentResponse> fetchById(int id) {
-    log.info("Fetching correspondent by id={}", id);
+    log.debug("Fetching correspondent by id={}", id);
     return webClient.getCorrespondent(id);
   }
 

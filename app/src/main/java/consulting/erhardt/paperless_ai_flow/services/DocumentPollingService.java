@@ -44,8 +44,7 @@ public class DocumentPollingService {
         .collectList()
         .block();
 
-      log.info("Polled {} documents for pipeline '{}'",
-        documents != null ? documents.size() : 0, pipelineName);
+      log.info("Polled {} documents for pipeline '{}'", documents != null ? documents.size() : 0, pipelineName);
 
       return documents != null ? documents : List.of();
 
@@ -53,32 +52,6 @@ public class DocumentPollingService {
       log.error("Failed to poll documents for pipeline '{}': {}", pipelineName, e.getMessage(), e);
       return List.of();
     }
-  }
-
-  /**
-   * Poll documents reactively for a specific pipeline definition
-   */
-  public Flux<Document> pollDocumentsReactive(PipelineDefinition pipelineDefinition) {
-    var pipelineName = pipelineDefinition.getName();
-    var requiredTags = pipelineDefinition.getSelector().getRequiredTags();
-
-    log.debug("Reactively polling documents for pipeline '{}' with required tags: {}",
-      pipelineName, requiredTags);
-
-    if (requiredTags.isEmpty()) {
-      log.warn("Pipeline '{}' has no required tags configured, returning empty flux", pipelineName);
-      return Flux.empty();
-    }
-
-    return getDocumentsByTagNames(requiredTags)
-      .doOnNext(document -> log.debug("Found document {} for pipeline '{}'",
-        document.getId(), pipelineName))
-      .doOnError(error -> log.error("Error polling documents for pipeline '{}': {}",
-        pipelineName, error.getMessage(), error))
-      .onErrorResume(error -> {
-        log.warn("Continuing after error in pipeline '{}' polling", pipelineName);
-        return Flux.empty();
-      });
   }
 
   public Flux<Document> getDocumentsByTagNames(List<String> tagNames) {

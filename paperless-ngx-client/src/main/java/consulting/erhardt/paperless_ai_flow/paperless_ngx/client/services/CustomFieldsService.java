@@ -45,13 +45,13 @@ public class CustomFieldsService extends AbstractReactivePagedService<CustomFiel
 
   @Override
   protected Mono<PagedResponse<CustomFieldResponse>> fetchPage(int page) {
-    log.info("Fetching custom fields page={}", page);
+    log.debug("Fetching custom fields page={}", page);
     return webClient.getCustomFieldsByPage(page);
   }
 
   @Override
   protected Mono<CustomFieldResponse> fetchById(int id) {
-    log.info("Fetching custom field by id={}", id);
+    log.debug("Fetching custom field by id={}", id);
     return webClient.getCustomField(id);
   }
 
