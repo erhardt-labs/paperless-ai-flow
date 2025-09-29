@@ -89,11 +89,8 @@ public class OcrExtractionModel implements OcrClient {
       }
 
       var imageBytes = baos.toByteArray();
-            /*ImageIO.write(image, "PNG", baos);
-            var imageBytes = baos.toByteArray();*/
 
       var imageResource = new ByteArrayResource(imageBytes) {
-        // Some clients like having a filename (optional but nice)
         @Override
         public String getFilename() {
           return "image.png";
