@@ -6,12 +6,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.support.WebClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 @Component
 public class PaperlessNgxHttpClientConfig {
+  final static int MAX_IN_MEMORY_SIZE = 25 * 1024 * 1024; // 25 Megabyte
+
   @Value("${paperless.api.base-url}")
   String paperlessBaseUrl;
 
@@ -30,12 +33,17 @@ public class PaperlessNgxHttpClientConfig {
   }
 
   public PaperlessNgxApiClient createPaperlessApiClient(@NonNull String baseUrl, @NonNull String token) {
+    final var strategies = ExchangeStrategies.builder()
+      .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(MAX_IN_MEMORY_SIZE))
+      .build();
+
     var restClient = WebClient.builder()
       .baseUrl(baseUrl)
       .defaultHeader(
         HttpHeaders.AUTHORIZATION,
         "Token " + token
       )
+      .exchangeStrategies(strategies)
       .build();
 
     var adapter = WebClientAdapter.create(restClient);
