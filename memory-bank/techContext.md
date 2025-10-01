@@ -182,11 +182,11 @@ resources:
     <artifactId>jackson-databind</artifactId>
 </dependency>
 
-<!-- PDF Processing -->
+<!-- PDF Processing - ICEpdf Integration -->
 <dependency>
-    <groupId>org.apache.pdfbox</groupId>
-    <artifactId>pdfbox</artifactId>
-    <version>3.0.3</version>
+    <groupId>org.icepdf.os</groupId>
+    <artifactId>icepdf-core</artifactId>
+    <version>6.3.2</version>
 </dependency>
 
 <!-- File Utilities (NEW) -->

@@ -249,6 +249,91 @@ Final result handling
 - **Scalability:** Message channels provide natural backpressure handling
 - **Observability:** Message flow enables comprehensive logging and monitoring
 
+### PDF Processing Pattern (UPDATED - ICEpdf Integration)
+**Purpose:** Convert PDF documents to images for OCR processing using ICEpdf library
+
+**Core Architecture:**
+```java
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class PdfOcrService {
+  
+  private static final float TARGET_DPI = 300f;
+  private static final float RENDER_SCALE = TARGET_DPI / 72f; // ICEpdf uses 72 DPI baseline
+  private static final float RENDER_ROTATION = 0f;
+  private static final float JPEG_COMPRESSION_QUALITY = 0.9f;
+
+  public Mono<String> processDocument(Document document, PipelineDefinition pipelineDefinition) {
+    return documentService.downloadById(document.getId())
+      .flatMapMany(pdfBytes -> convertPdfToImages(pdfBytes, documentId))
+      .collectList()
+      .flatMap(images -> processImagesWithOcr(Flux.fromIterable(images), pipelineDefinition));
+  }
+}
+```
+
+**ICEpdf Integration Pattern:**
+```java
+private Flux<BufferedImage> convertPdfToImages(byte[] pdfBytes, @NonNull Integer documentId) {
+  return Mono.fromCallable(() -> {
+    var iceDocument = new org.icepdf.core.pobjects.Document();
+    try (var bais = new ByteArrayInputStream(pdfBytes)) {
+      iceDocument.setInputStream(bais, null);
+      
+      var pageCount = iceDocument.getNumberOfPages();
+      
+      return IntStream.range(0, pageCount)
+        .mapToObj(pageIndex -> renderPageToImage(iceDocument, pageIndex))
+        .toList();
+    } catch (PDFSecurityException e) {
+      throw new RuntimeException("Cannot process encrypted or password-protected PDF", e);
+    } finally {
+      iceDocument.dispose();
+    }
+  })
+  .flatMapMany(Flux::fromIterable)
+  .subscribeOn(Schedulers.boundedElastic());
+}
+
+private BufferedImage renderPageToImage(@NonNull org.icepdf.core.pobjects.Document document, int pageNumber) {
+  var page = document.getPageTree().getPage(pageNumber);
+  page.init();
+
+  PDimension size = page.getSize(Page.BOUNDARY_CROPBOX, RENDER_ROTATION, RENDER_SCALE);
+  var width = Math.max(1, (int) size.getWidth());
+  var height = Math.max(1, (int) size.getHeight());
+
+  var image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+  var g2 = image.createGraphics();
+  try {
+    // Improve text/line quality in rasterization
+    g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+    page.paint(g2, GraphicsRenderingHints.PRINT, Page.BOUNDARY_CROPBOX, RENDER_ROTATION, RENDER_SCALE);
+  } finally {
+    g2.dispose();
+  }
+  return image;
+}
+```
+
+**Key Features:**
+- **ICEpdf integration:** Using org.icepdf.core.pobjects.Document instead of PDFbox
+- **High-quality rendering:** 300 DPI output with antialiasing for optimal OCR results
+- **Memory management:** Proper resource disposal with try-finally blocks
+- **Error handling:** Specific handling for encrypted/password-protected PDFs
+- **Reactive processing:** Non-blocking PDF conversion using Schedulers.boundedElastic()
+- **Image optimization:** JPEG compression with 0.9 quality for size/quality balance
+
+**Benefits:**
+- **Better rendering quality:** ICEpdf often produces superior image quality compared to PDFbox
+- **Memory efficiency:** Streaming page processing prevents memory issues with large PDFs
+- **Thread safety:** ICEpdf Document instances properly isolated per processing thread
+- **Error resilience:** Graceful handling of corrupted or encrypted PDFs
+- **Performance optimization:** Page-by-page processing enables backpressure handling
+
 ### Document Update Pattern (NEW)
 **Purpose:** Handle document metadata updates with custom API serialization for Paperless-ngx integration
 

@@ -64,14 +64,9 @@
     </dependency>
     <!-- PDF processing dependencies -->
     <dependency>
-      <groupId>org.apache.pdfbox</groupId>
-      <artifactId>pdfbox</artifactId>
-      <version>${pdfbox.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.pdfbox</groupId>
-      <artifactId>jbig2-imageio</artifactId>
-      <version>${pdfbox-jbig2.version}</version>
+      <groupId>com.github.pcorless.icepdf</groupId>
+      <artifactId>icepdf-core</artifactId>
+      <version>7.3.1</version>
     </dependency>
     <dependency>
       <groupId>com.twelvemonkeys.imageio</groupId>
@@ -89,17 +84,10 @@
       <version>${twelvemonkeys-imageio.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.twelvemonkeys.imageio</groupId>
-      <artifactId>imageio-tiff</artifactId>
-      <version>${twelvemonkeys-imageio.version}</version>
-    </dependency>
-    <!-- Reactor test support -->
-    <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-test</artifactId>
       <scope>test</scope>
     </dependency>
-    <!-- JSON Schema validation for testing -->
     <dependency>
       <groupId>com.networknt</groupId>
       <artifactId>json-schema-validator</artifactId>
