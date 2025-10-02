@@ -11,12 +11,13 @@
 ### **IMPLEMENTATION STATUS: 100% COMPLETE** ✅
 The Paperless-AI Flow application is now **fully functional** with complete end-to-end processing:
 1. ✅ **Document Discovery**: @Scheduled polling (30s) finds documents matching tag selectors  
-2. ✅ **PDF Processing**: ICEpdf converts PDFs to images for AI processing (upgraded from PDFBox)
-3. ✅ **OCR Processing**: AI-powered text extraction from document images
-4. ✅ **AI Metadata Extraction**: Parallel extraction using 5 specialized AI models
-5. ✅ **Field Patching**: Apply pipeline-specific patches (tags, correspondents, custom fields)
-6. ✅ **Document Update**: Save enriched metadata back to Paperless-ngx via reactive API client
-7. ✅ **Concurrency Control**: Document-level locking prevents duplicate processing
+2. ✅ **Intelligent Queueing**: Queue capacity awareness with document-level locking and backpressure handling
+3. ✅ **PDF Processing**: ICEpdf converts PDFs to images for AI processing (upgraded from PDFBox)
+4. ✅ **OCR Processing**: AI-powered text extraction from document images
+5. ✅ **AI Metadata Extraction**: Parallel extraction using 5 specialized AI models
+6. ✅ **Field Patching**: Apply pipeline-specific patches (tags, correspondents, custom fields)
+7. ✅ **Document Update**: Save enriched metadata back to Paperless-ngx via reactive API client
+8. ✅ **Advanced Concurrency Control**: Document-level locking with automatic cleanup and queue overflow protection
 
 ### **VERIFIED COMPLETE IMPLEMENTATION** ✅
 

@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +37,7 @@ public class DocumentService implements PaperlessApiService<Document> {
       .collectList();
   }
 
-  public Mono<List<Document>> getAllByTags(@NonNull List<Integer> tagIds) {
+  /*public Mono<List<Document>> getAllByTags(@NonNull List<Integer> tagIds) {
     var tagsIdsList = tagIds.stream()
       .map(String::valueOf)
       .collect(Collectors.joining(","));
@@ -47,6 +49,32 @@ public class DocumentService implements PaperlessApiService<Document> {
       .flatMapIterable(PagedResponse::getResults)
       .flatMap(this::toDto)
       .collectList();
+  }*/
+
+  public Flux<Document> getAllByTags(@NonNull List<Integer> tagIds) {
+    if (tagIds.isEmpty()) {
+      return Flux.empty();
+    }
+
+    // Start with page 1, then expand to next pages until getNext() == null
+    return Mono.defer(() -> fetchPageByTags(1, tagIds))
+      .map(firstPage -> Tuples.of(1, firstPage))
+      .expand(tuple -> {
+        var pageIndex = tuple.getT1();
+        var response  = tuple.getT2();
+
+        // Stop expanding when there's no "next" page
+        if (response.getNext() == null) {
+          return Mono.empty();
+        }
+
+        // Otherwise fetch next page (pageIndex + 1)
+        var nextPage = pageIndex + 1;
+        return fetchPageByTags(nextPage, tagIds).map(nextResp -> Tuples.of(nextPage, nextResp));
+      })
+      .map(Tuple2::getT2)
+      .concatMapIterable(PagedResponse::getResults)
+      .concatMap(this::toDto);
   }
 
   @Override
@@ -64,6 +92,14 @@ public class DocumentService implements PaperlessApiService<Document> {
 
   public Mono<byte[]> downloadById(@NonNull Integer id) {
     return webClient.downloadDocument(id);
+  }
+
+  private Mono<PagedResponse<DocumentResponse>> fetchPageByTags(int page, @NonNull List<Integer> tagIds) {
+    var tagsIdsList = tagIds.stream()
+      .map(String::valueOf)
+      .collect(Collectors.joining(","));
+
+    return webClient.getDocumentsByPage(page, tagsIdsList, "-added");
   }
 
   private Mono<Document> toDto(DocumentResponse resp) {

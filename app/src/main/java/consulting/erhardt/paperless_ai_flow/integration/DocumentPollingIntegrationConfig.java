@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.integration.annotation.IntegrationComponentScan;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.QueueChannel;
 import org.springframework.integration.config.EnableIntegration;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
@@ -43,12 +44,12 @@ public class DocumentPollingIntegrationConfig {
   private final IdLockRegistryService<Integer> documentLockRegistry;
 
   @Qualifier("pollingChannel")
-  private final MessageChannel pollingChannel;
+  private final QueueChannel pollingChannel;
 
   /**
-   * Scheduled polling that puts documents into pollingChannel
+   * Poll new documents all 30 seconds
    */
-  @Scheduled(fixedRate = 30000) // Poll every 30 seconds
+  @Scheduled(fixedRate = 30000)
   public void pollDocuments() {
     var enabledPipelines = pipelineConfig.getPipelines().stream()
       .filter(pipeline -> pipeline.getPolling().isEnabled())
@@ -56,34 +57,54 @@ public class DocumentPollingIntegrationConfig {
 
     for (var pipeline : enabledPipelines) {
       try {
-        var documents = pollingService.pollDocuments(pipeline);
-        if (!documents.isEmpty()) {
-          log.info("Found {} documents for pipeline '{}', sending to pollingChannel", documents.size(), pipeline.getName());
+        var remainingCapacity = pollingChannel.getRemainingCapacity();
 
-          // Send each document to the pollingChannel with pipeline context
-          for (var document : documents) {
-            var id = document.getId();
+        if (remainingCapacity <= 0) {
+          log.debug("Polling channel full (remainingCapacity=0), skip for pipeline '{}'", pipeline.getName());
+          continue;
+        }
 
-            if (!documentLockRegistry.tryLock(id)) {
-              log.debug("Skip document {} (title: '{}') - lock already held", id, document.getTitle());
-              continue;
+        var docsFlux = pollingService.getDocumentsByTagNames(pipeline.getSelector().getRequiredTags());
+
+        var successfullyEnqueuedDocs = docsFlux
+          // only allow documents, that are not locked
+          .filter(doc -> {
+            var locked = documentLockRegistry.tryLock(doc.getId());
+            if (!locked) {
+              log.debug("Skip locked document {}", doc.getId());
             }
-
+            return locked;
+          })
+          // try to queue document, if not accepted, unlock document again
+          .handle((doc, sink) -> {
             var message = MessageBuilder
-              .withPayload(document)
+              .withPayload(doc)
               .setHeader("pipeline", pipeline)
               .setHeader("pipelineName", pipeline.getName())
               .build();
 
-            pollingChannel.send(message);
+            var accepted = pollingChannel.send(message, 0); // non-blocking
+            if (accepted) {
+              log.debug("Enqueued document {} (title: '{}') for pipeline '{}'", doc.getId(), doc.getTitle(), pipeline.getName());
 
-            log.debug("Sent document {} (title: '{}') to pollingChannel for pipeline '{}'",
-              document.getId(), document.getTitle(), pipeline.getName());
-          }
+              sink.next(doc);
+            } else {
+              log.debug("Queue full while enqueuing document {}, unlock and stop filling this cycle", doc.getId());
+
+              documentLockRegistry.unlock(doc.getId());
+            }
+          })
+          .take(remainingCapacity)
+          .collectList()
+          .block();
+
+        // log enqueued documents
+        var enqueued = successfullyEnqueuedDocs != null ? successfullyEnqueuedDocs.size() : 0;
+        if (enqueued > 0) {
+          log.info("Enqueued {} documents for pipeline '{}'", enqueued, pipeline.getName());
         }
       } catch (Exception e) {
-        log.error("Error polling documents for pipeline '{}': {}",
-          pipeline.getName(), e.getMessage(), e);
+        log.error("Error polling documents for pipeline '{}': {}", pipeline.getName(), e.getMessage(), e);
       }
     }
   }

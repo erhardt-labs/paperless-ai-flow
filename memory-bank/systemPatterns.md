@@ -203,10 +203,10 @@ Prompt prompt = new Prompt(               // Message composition
 - **Model flexibility:** Easy switching between OpenAI models
 - **Future extensibility:** Spring AI abstracts provider-specific details
 
-### Spring Integration Pipeline Pattern (NEW)
-**Purpose:** Orchestrate document processing workflow using message-driven architecture
+### Spring Integration Pipeline Pattern with Advanced Queueing (UPDATED)
+**Purpose:** Orchestrate document processing workflow using message-driven architecture with intelligent queue management
 
-**Core Architecture:**
+**Enhanced Queueing Architecture:**
 ```java
 @Configuration
 @EnableIntegration
@@ -214,40 +214,85 @@ Prompt prompt = new Prompt(               // Message composition
 @EnableScheduling
 public class DocumentPollingIntegrationConfig {
   
-  @Scheduled(fixedRate = 30000)           // Automated polling
-  public void pollDocuments() { ... }
-  
-  @ServiceActivator(                      // Processing steps
-    inputChannel = "pollingChannel",
-    outputChannel = "metadataExtractChannel"
-  )
-  public Message<Document> processStep(Message<Document> message) { ... }
+  @Scheduled(fixedRate = 30000)           // Automated polling with capacity awareness
+  public void pollDocuments() {
+    var remainingCapacity = pollingChannel.getRemainingCapacity();
+    if (remainingCapacity <= 0) {
+      log.debug("Polling channel full, skip for pipeline '{}'", pipeline.getName());
+      continue;
+    }
+    
+    // Smart enqueueing with lock management
+    docsFlux
+      .filter(doc -> documentLockRegistry.tryLock(doc.getId()))  // Document-level locking
+      .handle((doc, sink) -> {
+        var accepted = pollingChannel.send(message, 0);          // Non-blocking send
+        if (!accepted) {
+          documentLockRegistry.unlock(doc.getId());              // Cleanup on failure
+        }
+      })
+      .take(remainingCapacity)                                   // Respect queue capacity
+      .collectList().block();
+  }
 }
 ```
 
-**Channel Architecture:**
+**Advanced Channel Architecture:**
 ```
-pollingChannel (QueueChannel)          // Buffering for document intake
+pollingChannel (QueueChannel, capacity=25)    // Smart buffering with capacity management
     ↓
-metadataExtractChannel (DirectChannel) // Immediate OCR processing
-    ↓  
-metadataResultChannel (DirectChannel)  // Immediate AI processing
+metadataExtractChannel (DirectChannel)         // Immediate OCR processing  
     ↓
-Final result handling
+metadataResultChannel (DirectChannel)          // Immediate AI processing
+    ↓
+finishedDocumentChannel (DirectChannel)        // Final document updates
 ```
+
+**Enhanced Queue Management Features:**
+- **Capacity-Aware Polling:** Checks remainingCapacity before attempting to enqueue documents
+- **Non-Blocking Queue Operations:** Uses send(message, 0) for immediate acceptance/rejection
+- **Document-Level Locking:** IdLockRegistryService prevents duplicate processing across threads
+- **Smart Lock Cleanup:** Automatically unlocks documents when queue is full or processing fails
+- **Backpressure Handling:** take(remainingCapacity) limits documents processed per cycle
+- **Pipeline-Specific Processing:** Each pipeline respects shared queue capacity limits
 
 **Key Components:**
-- **@Scheduled polling:** Automated document discovery with configurable intervals
-- **@ServiceActivator pattern:** Step-by-step processing with clear input/output channels
-- **Message headers:** Pipeline context preservation across processing steps
-- **Channel types:** QueueChannel for buffering, DirectChannel for immediate processing
-- **Error handling:** Return null to terminate message flow on processing failures
+- **@Scheduled polling:** Automated document discovery with smart capacity management
+- **@ServiceActivator pattern:** Step-by-step processing with comprehensive error isolation
+- **Message headers:** Pipeline context preservation with pipeline definition and name
+- **QueueChannel configuration:** Fixed capacity (25) with proper ComponentName setting
+- **Reactive document querying:** Flux-based document retrieval with streaming pagination
+- **Lock registry integration:** Document-level concurrency control with automatic cleanup
+
+**Advanced Error Handling:**
+```java
+// Document unlocking on processing failure
+private void unlockDocument(Message<Document> message) {
+  var lockedId = message.getPayload().getId();
+  documentLockRegistry.unlock(lockedId);
+}
+
+// Service activator error handling
+@ServiceActivator(inputChannel = "pollingChannel", outputChannel = "metadataExtractChannel")
+public Message<Document> processDocumentOcr(Message<Document> message) {
+  try {
+    // Processing logic
+    return processedMessage;
+  } catch (Exception e) {
+    log.error("Error processing: {}", e.getMessage(), e);
+    unlockDocument(message);
+    return null;  // Terminate message flow
+  }
+}
+```
 
 **Benefits:**
-- **Decoupling:** Each processing step is independent and testable
-- **Error isolation:** Failures in one document don't affect others
-- **Scalability:** Message channels provide natural backpressure handling
-- **Observability:** Message flow enables comprehensive logging and monitoring
+- **Intelligent Backpressure:** Queue capacity awareness prevents system overload
+- **Concurrent Processing Safety:** Document-level locking prevents race conditions
+- **Resource Efficiency:** Non-blocking operations with proper cleanup
+- **Pipeline Isolation:** Each pipeline respects shared resources while maintaining independence
+- **Fault Tolerance:** Comprehensive error recovery with automatic resource cleanup
+- **Observability:** Detailed logging of queue status, capacity, and processing decisions
 
 ### PDF Processing Pattern (UPDATED - ICEpdf Integration)
 **Purpose:** Convert PDF documents to images for OCR processing using ICEpdf library

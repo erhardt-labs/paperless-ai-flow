@@ -8,11 +8,11 @@ import org.springframework.integration.channel.QueueChannel;
 import org.springframework.messaging.MessageChannel;
 
 @Configuration
-@Profile("!test")
-public class ChannelConfig {
+@Profile("test")
+public class TestChannelConfig {
   @Bean
   public QueueChannel pollingChannel() {
-    var channel = new QueueChannel(25);
+    var channel = new QueueChannel(2);
     channel.setComponentName("pollingChannel");
     return channel;
   }
@@ -45,3 +45,4 @@ public class ChannelConfig {
     return channel;
   }
 }
+

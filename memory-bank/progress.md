@@ -10,14 +10,16 @@ The Paperless-AI Flow application is now **completely implemented** with all cor
 
 ### **COMPLETE END-TO-END DOCUMENT PROCESSING PIPELINE** ✅
 
-**1. Complete Spring Integration Pipeline Architecture**
-- ✅ **DocumentPollingIntegrationConfig**: Full message-driven architecture with 4-stage processing
-- ✅ **@Scheduled Polling**: Automated document discovery every 30 seconds for enabled pipelines  
-- ✅ **@ServiceActivator Pattern**: Step-by-step processing with proper error isolation
-- ✅ **Message Channel Flow**: pollingChannel → metadataExtractChannel → metadataResultChannel → finishedDocumentChannel
-- ✅ **Document Locking**: IdLockRegistryService prevents concurrent processing of same document
+**1. Complete Spring Integration Pipeline Architecture with Advanced Queueing**
+- ✅ **DocumentPollingIntegrationConfig**: Full message-driven architecture with 4-stage processing and intelligent queue management
+- ✅ **@Scheduled Polling**: Automated document discovery every 30 seconds with capacity-aware queueing  
+- ✅ **@ServiceActivator Pattern**: Step-by-step processing with proper error isolation and lock management
+- ✅ **Message Channel Flow**: pollingChannel (capacity=25) → metadataExtractChannel → metadataResultChannel → finishedDocumentChannel
+- ✅ **Advanced Queue Management**: Capacity awareness, non-blocking send operations, backpressure handling
+- ✅ **Document-Level Locking**: IdLockRegistryService prevents concurrent processing with automatic cleanup
+- ✅ **Smart Enqueueing**: Filter-lock-enqueue-or-unlock pattern with take(remainingCapacity) optimization
 - ✅ **Complete Workflow**: poll → OCR → AI metadata extraction → field patching → document save
-- ✅ **Error Recovery**: Comprehensive error handling with proper lock cleanup and flow termination
+- ✅ **Enhanced Error Recovery**: Comprehensive error handling with proper lock cleanup, capacity management, and flow termination
 
 **2. Complete AI Metadata Extraction Framework**
 - ✅ **AbstractAiModel<T>**: Template method pattern with OpenAI JSON Schema integration
