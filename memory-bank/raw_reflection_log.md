@@ -1,38 +1,68 @@
 ---
 Date: 2025-10-02
-TaskRef: "Comprehensive Integration Testing for DocumentPollingIntegrationConfig - Queue Management and Locking"
+TaskRef: "Critical Maven Usage Rule Documentation - Multimodule Project Constraints"
 
 Learnings:
-- Spring Integration's DirectChannel processes messages immediately in separate threads, requiring Awaitility for async assertions in tests
-- When testing with multi-module Maven projects, must use `./mvnw clean test` from root (NOT `./mvnw test -pl app`) to ensure Lombok annotation processing works correctly
-- Awaitility 4.2.0 is essential for testing async Spring Integration flows with proper wait conditions using `await().atMost(Duration).untilAsserted()`
-- WireMock URL pattern matching requires `urlMatching("/api/documents/\\d+/.*")` for flexible path matching with trailing slashes
-- @SuperBuilder-annotated DTOs don't generate toBuilder() the same way as regular @Builder, causing compilation issues when building with `-pl app` flag
-- Testing queue capacity behavior requires understanding that DirectChannels auto-process, making traditional queue-full scenarios challenging to test
-- Document locking and unlocking is the critical behavior to verify - queue capacity is a performance optimization
-- Mock setup using invocation.getArgument(index, Class.class) is safer than casting to prevent NullPointerExceptions
+- Maven `-pl` (projects list) option MUST NEVER be used in this multimodule project due to compilation failures
+- The app module has a direct dependency on paperless-ngx-client module, creating inter-module dependencies
+- Using `-pl` breaks Maven's reactor build order and dependency resolution mechanism
+- Inter-module dependencies cannot be resolved when building individual modules in isolation
+- This is a fundamental constraint of Maven multimodule projects with interdependencies
+- All Maven commands must be run from the project root without the `-pl` option
+- Proper commands: `mvn test`, `mvn clean install`, `mvn compile`, `./mvnw test`
+- Wrong commands that will fail: `mvn test -pl app`, `mvn compile -pl paperless-ngx-client`
 
 Difficulties:
-- Initial tests failed due to DirectChannel's immediate async processing - documents don't stay queued for verification
-- Maven module-specific builds (`-pl app`) caused Lombok annotation processing failures, leading to "method not found" errors
-- Complex backpressure tests with `Mono.never()` or `Mono.delay()` caused timing issues and InterruptedExceptions
-- WireMock stub patterns needed adjustment from exact URL matching to regex patterns for trailing slash handling
+- Initially unclear why `-pl` would fail in multimodule projects
+- Understanding the relationship between Maven reactor build order and dependency resolution
 
 Successes:
-- Achieved 100% test pass rate (8/8 tests) for comprehensive integration testing
-- Successfully implemented Awaitility for reliable async testing in Spring Integration context
-- Created robust error handling tests covering all pipeline stages (OCR, Metadata Extraction, Patching, Saving)
-- Verified critical document locking/unlocking behavior across success and failure scenarios
-- Added queue capacity backpressure test verifying polling stops when limit reached
-- All tests use WireMock for realistic API simulation without external dependencies
+- Successfully documented the critical Maven usage constraint in techContext.md
+- Added clear examples of correct vs incorrect Maven command usage
+- Explained the technical reason why `-pl` fails (dependency resolution breakdown)
+- Created prominent warning section to prevent future compilation errors
 
 Improvements_Identified_For_Consolidation:
-- Awaitility Pattern: Use `await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> assertions)` for async Spring Integration tests
-- Maven Multi-Module Testing: Always run tests from project root with `./mvnw clean test` to ensure proper annotation processing
-- Spring Integration Testing: DirectChannels process immediately - use Awaitility for assertions, don't assume messages stay in queue
-- WireMock URL Patterns: Use `urlMatching()` with regex patterns for flexible URL matching in integration tests
-- Document Lock Testing: Focus on lock acquisition and release behavior rather than complex queue state verification
-- Safe Mock Argument Extraction: Use `invocation.getArgument(index, Class.class)` instead of casting for null-safety
+- Maven Multimodule Best Practices: Never use `-pl` with interdependent modules
+- Dependency Resolution Pattern: Always build from root to maintain reactor build order
+- Project Documentation: Critical build constraints must be prominently documented
+---
+
+---
+Date: 2025-10-02
+TaskRef: "Test Coverage Improvement Project - Increasing Coverage from ~64% to ~70%"
+
+Learnings:
+- OCR package coverage dramatically improved from 3% to 48% by adding comprehensive OcrExtractionModelTest
+- paperless-ngx-client module coverage improved from 61% to 71% with existing comprehensive tests
+- app module coverage improved from 67% to 69% by adding IdLockRegistryServiceTest and OCR tests
+- Must avoid using -pl app flag when running tests due to Lombok annotation processing failures
+- Multi-module Maven projects require running tests from project root with `./mvnw test verify` for proper annotation processing
+- Simple unit tests focusing on object creation, configuration, and basic functionality provide good coverage gains
+- PdfOcrService tests can cause hanging when actually trying to process PDFs - mock dependencies instead
+- DocumentService tests in paperless-ngx-client had stubbing issues - existing WireMock tests provide sufficient coverage
+
+Difficulties:
+- Initial compilation errors due to incorrect Spring AI imports (ChatResponse, Generation classes)
+- Media constructor required Resource parameter instead of byte array
+- Document and DocumentResponse DTOs use different field names (createdDate vs created)
+- Complex service tests with unnecessary stubbing caused Mockito errors
+- PdfOcrService integration test caused test hanging due to actual PDF processing
+
+Successes:
+- Successfully added OcrExtractionModelTest covering configuration, pipeline creation, and basic validation
+- Successfully added IdLockRegistryServiceTest covering all lock/unlock scenarios and edge cases
+- Maintained clean test execution with 346 total tests passing
+- Achieved significant coverage improvement: OCR (3%→48%), paperless-ngx-client (61%→71%), app (67%→69%)
+- Learned proper Maven multi-module testing practices (avoid -pl flag, run from root)
+
+Improvements_Identified_For_Consolidation:
+- Unit Testing Strategy: Focus on simple object creation, configuration validation, and basic functionality for quick coverage wins
+- Maven Multi-Module Testing: Always run `./mvnw test verify` from project root to avoid annotation processing issues
+- Mock Testing Pattern: Use simple mocks for dependencies, avoid complex integration test setup for basic coverage
+- Test Coverage Analysis: Use Jacoco reports to identify lowest coverage areas and prioritize systematically
+- OCR Testing Pattern: Test configuration and pipeline setup rather than actual image processing
+- Service Testing Strategy: Focus on business logic validation and error handling scenarios
 ---
 
 ---

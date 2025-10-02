@@ -215,6 +215,31 @@ resources:
 ## Tool Usage Patterns
 
 ### Maven Build Configuration (Implemented)
+
+**CRITICAL: Maven Multimodule Usage Rules**
+```bash
+# NEVER use Maven with -pl (projects list) option in this multimodule project
+# This WILL cause compilation errors due to dependency resolution failures
+
+# WRONG - Will fail with compilation errors:
+mvn test -pl app                    # ❌ NEVER DO THIS
+mvn compile -pl paperless-ngx-client # ❌ NEVER DO THIS
+mvn clean install -pl app           # ❌ NEVER DO THIS
+
+# CORRECT - Always run from root without -pl:
+mvn test                            # ✅ Runs all modules with proper dependency resolution
+mvn clean install                  # ✅ Builds all modules in correct order
+mvn compile                         # ✅ Compiles all modules with dependencies
+mvn spring-boot:run                 # ✅ Runs the app module with all dependencies
+./mvnw test                         # ✅ Via Maven wrapper
+```
+
+**Why `-pl` fails in this project:**
+- The `app` module depends on `paperless-ngx-client` module
+- Using `-pl` breaks Maven's reactor build order and dependency resolution
+- Inter-module dependencies cannot be resolved when building individual modules in isolation
+- This is a fundamental constraint of Maven multimodule projects with interdependencies
+
 ```xml
 <build>
     <plugins>
