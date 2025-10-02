@@ -4,15 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration;
-import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration.PatchConfiguration;
-import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration.PatchType;
-import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration.PipelineDefinition;
-import consulting.erhardt.paperless_ai_flow.configs.PipelineConfiguration.SelectorConfiguration;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.dtos.Document;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.DocumentResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.PagedResponse;
 import consulting.erhardt.paperless_ai_flow.paperless_ngx.client.entities.TagResponse;
-import consulting.erhardt.paperless_ai_flow.services.*;
+import consulting.erhardt.paperless_ai_flow.services.DocumentFieldPatchingService;
+import consulting.erhardt.paperless_ai_flow.services.DocumentMetadataExtractionService;
+import consulting.erhardt.paperless_ai_flow.services.IdLockRegistryService;
+import consulting.erhardt.paperless_ai_flow.services.PdfOcrService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,10 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.PollableChannel;
@@ -34,10 +29,8 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
+import java.time.Duration;
 import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -45,8 +38,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
-
-import java.time.Duration;
 
 @ActiveProfiles("test")
 @SpringBootTest(
@@ -86,9 +77,6 @@ class DocumentPollingIntegrationConfigTest {
   private PollableChannel pollingChannel;
 
   @Autowired
-  private DocumentPollingService documentPollingService;
-
-  @Autowired
   private IdLockRegistryService<Integer> documentLockRegistry;
 
   @MockitoBean
@@ -99,9 +87,6 @@ class DocumentPollingIntegrationConfigTest {
 
   @MockitoBean
   private DocumentFieldPatchingService documentFieldPatchingService;
-
-  @Autowired
-  private consulting.erhardt.paperless_ai_flow.paperless_ngx.client.services.DocumentService documentService;
 
   @BeforeEach
   void setUpMocks() {
@@ -409,30 +394,6 @@ class DocumentPollingIntegrationConfigTest {
       .willReturn(aResponse()
         .withHeader("Content-Type", "application/json")
         .withBody(body)));
-  }
-
-  private List<Integer> receiveDocumentIds() {
-    var ids = new AtomicInteger[0];
-    Message<?> message;
-    var collected = new java.util.ArrayList<Integer>();
-    while ((message = pollingChannel.receive(0)) != null) {
-      var payload = (Document) message.getPayload();
-      collected.add(payload.getId());
-    }
-    return collected;
-  }
-
-  private void prefillQueueToCapacity() {
-    pollingChannel.send(buildMessageFor(Document.builder().id(1).title("Existing-1").build()));
-    pollingChannel.send(buildMessageFor(Document.builder().id(2).title("Existing-2").build()));
-  }
-
-  private Message<Document> buildMessageFor(Document document) {
-    var pipeline = pipelineConfiguration.getPipelines().getFirst();
-    return MessageBuilder.withPayload(document)
-      .setHeader("pipeline", pipeline)
-      .setHeader("pipelineName", pipeline.getName())
-      .build();
   }
 
   private DocumentResponse documentResponse(int id, String title) {

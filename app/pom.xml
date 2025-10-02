@@ -12,9 +12,10 @@
   <artifactId>app</artifactId>
 
   <properties>
-    <pdfbox.version>3.0.5</pdfbox.version>
-    <pdfbox-jbig2.version>3.0.4</pdfbox-jbig2.version>
+    <icepdf.version>7.3.1</icepdf.version>
     <twelvemonkeys-imageio.version>3.12.0</twelvemonkeys-imageio.version>
+    <wiremock.version>3.13.1</wiremock.version>
+    <awaitility.version>4.2.0</awaitility.version>
   </properties>
 
   <dependencies>
@@ -47,31 +48,9 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.integration</groupId>
-      <artifactId>spring-integration-test</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.wiremock</groupId>
-      <artifactId>wiremock-standalone</artifactId>
-      <version>3.13.1</version>
-      <scope>test</scope>
-    </dependency>
-    <!-- PDF processing dependencies -->
-    <dependency>
       <groupId>com.github.pcorless.icepdf</groupId>
       <artifactId>icepdf-core</artifactId>
-      <version>7.3.1</version>
+      <version>${icepdf.version}</version>
     </dependency>
     <dependency>
       <groupId>com.twelvemonkeys.imageio</groupId>
@@ -93,19 +72,34 @@
       <artifactId>reactor-test</artifactId>
       <scope>test</scope>
     </dependency>
-		<dependency>
-			<groupId>com.github.tomakehurst</groupId>
-			<artifactId>wiremock-jre8</artifactId>
-			<version>2.35.0</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.awaitility</groupId>
-			<artifactId>awaitility</artifactId>
-			<version>4.2.0</version>
-			<scope>test</scope>
-		</dependency>
-	</dependencies>
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>${awaitility.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.integration</groupId>
+      <artifactId>spring-integration-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.wiremock</groupId>
+      <artifactId>wiremock-standalone</artifactId>
+      <version>${wiremock.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
   <build>
     <plugins>
       <plugin>
@@ -142,6 +136,26 @@
           <execution>
             <goals>
               <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
             </goals>
           </execution>
         </executions>
