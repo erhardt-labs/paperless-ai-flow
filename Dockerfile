@@ -1,5 +1,5 @@
 # Stage 1: Build stage with full JDK and Maven
-FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:e501e99cb899bc7778f3e60c514d211d1018abd0076bf576a2b8c5361bee888a AS build
+FROM docker.io/library/maven:3.9-eclipse-temurin-21@sha256:9311699b501f3bad9643f5dd58365eadf7377eeacaa449f19851b087f144a019 AS build
 
 # Set working directory
 WORKDIR /app
