@@ -13,7 +13,7 @@
   <artifactId>paperless-ngx-client</artifactId>
 
   <properties>
-    <caffeine.version>3.2.2</caffeine.version>
+    <caffeine.version>3.2.3</caffeine.version>
   </properties>
 
   <dependencies>
