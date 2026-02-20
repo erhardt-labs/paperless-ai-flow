@@ -12,7 +12,7 @@
   <artifactId>app</artifactId>
 
   <properties>
-    <icepdf.version>7.3.1</icepdf.version>
+    <icepdf.version>7.3.2</icepdf.version>
     <twelvemonkeys-imageio.version>3.13.0</twelvemonkeys-imageio.version>
     <wiremock.version>3.13.2</wiremock.version>
     <awaitility.version>4.3.0</awaitility.version>
