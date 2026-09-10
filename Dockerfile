@@ -22,7 +22,7 @@ COPY paperless-ngx-client/src/ ./paperless-ngx-client/src/
 RUN mvn -B -DskipTests package
 
 # Stage 2: Runtime stage with minimal JRE
-FROM docker.io/library/eclipse-temurin:21-jre@sha256:b0f6befb3f2af49704998c4425cb6313c1da505648a8e78cee731531996f735d AS runtime
+FROM docker.io/library/eclipse-temurin:21-jre@sha256:a80c51f2d09a3e7e00d521f1c817bbceb6b3be94109b4a784d46078099882dda AS runtime
 
 # Set working directory
 WORKDIR /app
